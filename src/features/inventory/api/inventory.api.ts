@@ -1,0 +1,269 @@
+import { USE_MOCK_API, mockDelay } from '@/shared/lib/mock-data';
+import { apiClient } from '@/shared/lib/api-client';
+import type {
+  Item,
+  StockAdjustmentRequest,
+  InventoryFilters,
+} from '../types/inventory.types';
+import { MOCK_ITEMS, getStockStatus } from '../lib/mock-inventory';
+
+/**
+ * Backend Item type (from MongoDB)
+ */
+interface BackendItem {
+  _id: string;
+  name: string;
+  description?: string;
+  unitPrice: number;
+  origin?: string;
+  tags: string[];
+  quantity: number;
+  unit: string;
+  imageUrl?: string[];
+  storeHouse: string | { _id: string; name: string }; // Can be ObjectId or populated
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Map backend item to frontend Item type
+ */
+function mapBackendItem(item: BackendItem): Item {
+  console.log('🔄 Mapping item:', JSON.stringify(item, null, 2));
+  console.log('🔑 Item keys:', Object.keys(item));
+  console.log('🆔 _id value:', item._id);
+  console.log('🆔 id value:', (item as any).id);
+
+  if (!item) {
+    throw new Error('Item is null or undefined');
+  }
+
+  // Handle both _id and id field names
+  const itemId = item._id || (item as any).id;
+
+  if (!itemId) {
+    console.error('❌ Item missing both _id and id:', item);
+    throw new Error('Item missing _id or id field');
+  }
+
+  return {
+    id: itemId,
+    name: item.name,
+    description: item.description,
+    unitPrice: item.unitPrice,
+    origin: item.origin,
+    tags: item.tags || [],
+    quantity: item.quantity,
+    unit: item.unit,
+    imageUrl: item.imageUrl || [],
+    storeHouse: !item.storeHouse
+      ? { id: '', name: 'No Warehouse' } // Missing storeHouse
+      : typeof item.storeHouse === 'string'
+        ? { id: item.storeHouse, name: 'Unknown' } // Not populated
+        : {
+            id: item.storeHouse._id || (item.storeHouse as any).id,
+            name: item.storeHouse.name,
+          }, // Populated
+    createdAt: item.createdAt || new Date().toISOString(),
+    updatedAt: item.updatedAt || new Date().toISOString(),
+  };
+}
+
+/**
+ * Get all inventory items with optional filters
+ */
+export async function getInventoryItems(
+  filters?: InventoryFilters
+): Promise<Item[]> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: getInventoryItems', filters);
+
+    let filtered = [...MOCK_ITEMS];
+
+    // Search
+    if (filters?.search) {
+      const search = filters.search.toLowerCase();
+      filtered = filtered.filter(
+        (item) =>
+          item.name.toLowerCase().includes(search) ||
+          item.description?.toLowerCase().includes(search) ||
+          item.tags.some((tag) => tag.toLowerCase().includes(search))
+      );
+    }
+
+    // Status filter
+    if (filters?.status && filters.status !== 'all') {
+      filtered = filtered.filter(
+        (item) => getStockStatus(item) === filters.status
+      );
+    }
+
+    // Tags filter
+    if (filters?.tags && filters.tags.length > 0) {
+      filtered = filtered.filter((item) =>
+        filters.tags!.some((tag) => item.tags.includes(tag))
+      );
+    }
+
+    // Storehouse filter
+    if (filters?.storeHouse) {
+      filtered = filtered.filter(
+        (item) => item.storeHouse.id === filters.storeHouse
+      );
+    }
+
+    return filtered;
+  }
+
+  const params = new URLSearchParams();
+  if (filters?.search) params.append('search', filters.search);
+  if (filters?.status && filters.status !== 'all')
+    params.append('status', filters.status);
+  if (filters?.tags && filters.tags.length > 0)
+    params.append('tags', filters.tags.join(','));
+  if (filters?.storeHouse) params.append('storeHouse', filters.storeHouse);
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/item?${queryString}` : '/item';
+
+  console.log('📦 Fetching items from:', endpoint);
+  const backendItems = await apiClient.get<BackendItem[]>(endpoint);
+  console.log('📦 Backend response:', backendItems);
+
+  const mappedItems = Array.isArray(backendItems)
+    ? backendItems.map(mapBackendItem)
+    : [];
+
+  console.log('📦 Mapped items:', mappedItems);
+  return mappedItems;
+}
+
+/**
+ * Get single item by ID
+ */
+export async function getItemById(itemId: string): Promise<Item> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: getItemById', itemId);
+
+    const item = MOCK_ITEMS.find((i) => i.id === itemId);
+    if (!item) throw new Error('Item not found');
+    return item;
+  }
+
+  const backendItem = await apiClient.get<BackendItem>(`/item/${itemId}`);
+  return mapBackendItem(backendItem);
+}
+
+/**
+ * Adjust stock quantity
+ */
+export async function adjustStock(
+  request: StockAdjustmentRequest
+): Promise<Item> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: adjustStock', request);
+
+    const item = MOCK_ITEMS.find((i) => i.id === request.itemId);
+    if (!item) throw new Error('Item not found');
+
+    // Update mock item (in-memory only)
+    item.quantity = Math.max(0, item.quantity + request.quantity);
+    item.updatedAt = new Date().toISOString();
+
+    return item;
+  }
+
+  // TODO: Backend doesn't have adjust-stock endpoint yet
+  // For now, use updateItem to change quantity
+  throw new Error('Stock adjustment endpoint not implemented on backend yet');
+}
+
+/**
+ * Update item details
+ */
+export async function updateItem(
+  itemId: string,
+  updates: Partial<Omit<Item, 'id' | 'createdAt' | 'updatedAt'>>
+): Promise<Item> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: updateItem', itemId, updates);
+
+    const item = MOCK_ITEMS.find((i) => i.id === itemId);
+    if (!item) throw new Error('Item not found');
+
+    Object.assign(item, updates, { updatedAt: new Date().toISOString() });
+    return item;
+  }
+
+  // Convert frontend updates to backend format
+  const backendUpdates: any = { ...updates };
+  if (updates.storeHouse) {
+    backendUpdates.storeHouse = updates.storeHouse.id; // Send only the ID
+  }
+
+  const backendItem = await apiClient.put<BackendItem>(
+    `/item/${itemId}`,
+    backendUpdates
+  );
+  return mapBackendItem(backendItem);
+}
+
+/**
+ * Create new item
+ */
+export async function createItem(
+  data: Omit<Item, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<Item> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: createItem', data);
+
+    const newItem: Item = {
+      ...data,
+      id: `item-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    MOCK_ITEMS.push(newItem);
+    return newItem;
+  }
+
+  // Convert frontend Item to backend format
+  const backendData = {
+    name: data.name,
+    description: data.description,
+    unitPrice: data.unitPrice,
+    origin: data.origin,
+    tags: data.tags,
+    quantity: data.quantity,
+    unit: data.unit,
+    imageUrl: data.imageUrl,
+    storeHouse: data.storeHouse.id, // Send only the ID
+  };
+
+  const backendItem = await apiClient.post<BackendItem>('/item', backendData);
+  return mapBackendItem(backendItem);
+}
+
+/**
+ * Delete item
+ */
+export async function deleteItem(itemId: string): Promise<void> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: deleteItem', itemId);
+
+    const index = MOCK_ITEMS.findIndex((i) => i.id === itemId);
+    if (index !== -1) {
+      MOCK_ITEMS.splice(index, 1);
+    }
+    return;
+  }
+
+  await apiClient.delete(`/item/${itemId}`);
+}
