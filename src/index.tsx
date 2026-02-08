@@ -11,13 +11,17 @@ cleanupDeprecatedStorage();
 // Initialize theme system first
 initTheme();
 
-// Initialize session before rendering
-initSession().then(() => {
-  const root = document.getElementById('root');
+// Get root element
+const root = document.getElementById('root');
 
-  if (!root) {
-    throw new Error('Root element not found');
-  }
+if (!root) {
+  throw new Error('Root element not found');
+}
 
-  render(() => <AppRouter />, root);
-});
+// Render app immediately (don't wait for session init)
+// ProtectedRoute will handle loading state
+render(() => <AppRouter />, root);
+
+// Initialize session in background
+// ProtectedRoute components will react to authentication state changes
+initSession();
