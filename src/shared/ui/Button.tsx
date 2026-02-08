@@ -21,7 +21,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   ghost:
     'bg-transparent text-text-primary hover:bg-bg-hover focus:ring-border-focus',
   outline:
-    'bg-transparent border border-border-default text-text-primary hover:bg-bg-hover focus:ring-border-focus',
+    'bg-bg-surface border border-border-default text-text-primary hover:bg-bg-hover focus:ring-border-focus',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

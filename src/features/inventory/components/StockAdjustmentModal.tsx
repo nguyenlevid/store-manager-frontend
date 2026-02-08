@@ -87,11 +87,11 @@ export const StockAdjustmentModal: Component<StockAdjustmentModalProps> = (
   return (
     <Show when={props.isOpen}>
       <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        class="fixed bottom-0 left-0 right-0 top-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50"
         onClick={props.onClose}
       >
         <div
-          class="w-full max-w-md rounded-lg border border-border-default bg-bg-surface p-6 shadow-xl"
+          class="m-4 w-full max-w-md rounded-lg border border-border-default bg-bg-surface p-6 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -132,7 +132,7 @@ export const StockAdjustmentModal: Component<StockAdjustmentModalProps> = (
 
           {/* Error message */}
           <Show when={error()}>
-            <Alert variant="danger" class="mb-4">
+            <Alert variant="error" class="mb-4">
               {error()}
             </Alert>
           </Show>

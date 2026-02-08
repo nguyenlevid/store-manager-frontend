@@ -29,10 +29,12 @@ describe('Session Store - Initialization', () => {
 
   it('should start in loading state and transition to authenticated when user exists', async () => {
     const mockUser = {
-      id: '1',
+      _id: '1',
       email: 'test@example.com',
       name: 'Test User',
-      role: 'admin' as const,
+      appRole: 'admin' as const,
+      storeHouses: [],
+      accessRole: [],
     };
 
     vi.mocked(authApi.getCurrentUser).mockResolvedValue(mockUser);
@@ -62,10 +64,12 @@ describe('Session Store - Initialization', () => {
 
   it('should not reinitialize if already initialized', async () => {
     const mockUser = {
-      id: '1',
+      _id: '1',
       email: 'test@example.com',
       name: 'Test User',
-      role: 'admin' as const,
+      appRole: 'admin' as const,
+      storeHouses: [],
+      accessRole: [],
     };
 
     vi.mocked(authApi.getCurrentUser).mockResolvedValue(mockUser);

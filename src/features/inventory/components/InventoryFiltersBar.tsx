@@ -1,11 +1,14 @@
-import { createSignal, Show, For, type Component } from 'solid-js';
+import {
+  createSignal,
+  createResource,
+  Show,
+  For,
+  type Component,
+} from 'solid-js';
 import { Button } from '@/shared/ui/Button';
 import type { InventoryFilters, StockStatus } from '../types/inventory.types';
-import {
-  getAllTags,
-  getAllStorehouses,
-  MOCK_ITEMS,
-} from '../lib/mock-inventory';
+import { getAllTags, MOCK_ITEMS } from '../lib/mock-inventory';
+import { getStorehouses } from '@/shared/api';
 
 interface InventoryFiltersBarProps {
   filters: InventoryFilters;
@@ -21,7 +24,9 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
     props.filters.search || ''
   );
   const allTags = getAllTags(MOCK_ITEMS);
-  const allStorehouses = getAllStorehouses(MOCK_ITEMS);
+
+  // Fetch real storehouses from API
+  const [storehouses] = createResource(() => getStorehouses());
 
   const handleSearch = (e: Event) => {
     e.preventDefault();
@@ -133,16 +138,23 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
         {/* Storehouse filter */}
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-text-primary">Location:</span>
-          <select
-            value={props.filters.storeHouse || 'all'}
-            onChange={(e) => handleStorehouseChange(e.currentTarget.value)}
-            class="focus:ring-border-focus/20 rounded-md border border-border-default bg-bg-surface px-3 py-1 text-xs font-medium text-text-primary transition-colors hover:bg-bg-hover focus:border-border-focus focus:outline-none focus:ring-2"
+          <Show
+            when={!storehouses.loading}
+            fallback={
+              <span class="text-xs text-text-secondary">Loading...</span>
+            }
           >
-            <option value="all">All Locations</option>
-            <For each={allStorehouses}>
-              {(store) => <option value={store.id}>{store.name}</option>}
-            </For>
-          </select>
+            <select
+              value={props.filters.storeHouse || 'all'}
+              onChange={(e) => handleStorehouseChange(e.currentTarget.value)}
+              class="focus:ring-border-focus/20 rounded-md border border-border-default bg-bg-surface px-3 py-1 text-xs font-medium text-text-primary transition-colors hover:bg-bg-hover focus:border-border-focus focus:outline-none focus:ring-2"
+            >
+              <option value="all">All Locations</option>
+              <For each={storehouses()}>
+                {(store) => <option value={store.id}>{store.name}</option>}
+              </For>
+            </select>
+          </Show>
         </div>
 
         {/* Tag chips */}

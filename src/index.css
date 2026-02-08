@@ -67,6 +67,13 @@
     --status-info-text: #1e40af;
   }
 
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+
   body {
     @apply antialiased;
   }

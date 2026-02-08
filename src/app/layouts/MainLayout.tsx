@@ -11,6 +11,7 @@ interface MainLayoutProps {
 export function MainLayout(props: MainLayoutProps) {
   const user = getUser();
   const [isDropdownOpen, setIsDropdownOpen] = createSignal(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = createSignal(false);
   const [currentTheme, setCurrentTheme] =
     createSignal<ThemeName>(getCurrentTheme());
 
@@ -42,7 +43,7 @@ export function MainLayout(props: MainLayoutProps) {
   return (
     <div class="min-h-screen bg-bg-app">
       {/* Header */}
-      <header class="border-b border-border-subtle bg-bg-surface shadow-sm">
+      <header class="sticky top-0 z-40 border-b border-border-subtle bg-bg-surface shadow-sm">
         <nav class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="flex h-16 items-center justify-between">
             {/* Logo and primary nav */}
@@ -53,6 +54,7 @@ export function MainLayout(props: MainLayoutProps) {
               >
                 Store Manager
               </A>
+              {/* Desktop Navigation */}
               <div class="hidden gap-1 md:flex">
                 <A
                   href="/inventory"
@@ -85,8 +87,48 @@ export function MainLayout(props: MainLayoutProps) {
               </div>
             </div>
 
-            {/* User menu */}
+            {/* Right side: Mobile menu button, Theme toggle, and User menu */}
             <div class="flex items-center gap-3">
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen())}
+                class="rounded-lg p-2 text-text-secondary transition-colors hover:bg-bg-hover focus:outline-none focus:ring-2 focus:ring-border-focus md:hidden"
+                aria-label="Toggle mobile menu"
+              >
+                <Show
+                  when={isMobileMenuOpen()}
+                  fallback={
+                    <svg
+                      class="h-6 w-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width={2}
+                        d="M4 6h16M4 12h16M4 18h16"
+                      />
+                    </svg>
+                  }
+                >
+                  <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </Show>
+              </button>
+
               {/* Theme toggle button */}
               <button
                 onClick={handleThemeToggle}
@@ -217,6 +259,46 @@ export function MainLayout(props: MainLayoutProps) {
               )}
             </div>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          <Show when={isMobileMenuOpen()}>
+            <div class="border-t border-border-subtle bg-bg-surface py-3 md:hidden">
+              <div class="flex flex-col gap-1">
+                <A
+                  href="/inventory"
+                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Inventory
+                </A>
+                <A
+                  href="/orders"
+                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Orders
+                </A>
+                <A
+                  href="/imports"
+                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Imports
+                </A>
+                <A
+                  href="/clients"
+                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Clients
+                </A>
+              </div>
+            </div>
+          </Show>
         </nav>
       </header>
 

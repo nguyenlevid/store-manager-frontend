@@ -22,11 +22,11 @@ describe('API Client - Single-Flight Refresh', () => {
     let callCount = 0;
 
     // Mock fetch behavior
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = vi.fn((url: RequestInfo | URL) => {
       callCount++;
 
       // Mock refresh endpoint
-      if (url.includes('/auth/refresh')) {
+      if (url.toString().includes('/auth/refresh')) {
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -72,9 +72,9 @@ describe('API Client - Single-Flight Refresh', () => {
   it('should retry original request after successful refresh', async () => {
     let isFirstCall = true;
 
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = vi.fn((url: RequestInfo | URL) => {
       // Mock refresh endpoint
-      if (url.includes('/auth/refresh')) {
+      if (url.toString().includes('/auth/refresh')) {
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -105,9 +105,9 @@ describe('API Client - Single-Flight Refresh', () => {
   });
 
   it('should fail all requests if refresh fails', async () => {
-    global.fetch = vi.fn((url: string) => {
+    global.fetch = vi.fn((url: RequestInfo | URL) => {
       // Mock refresh endpoint to fail
-      if (url.includes('/auth/refresh')) {
+      if (url.toString().includes('/auth/refresh')) {
         return Promise.resolve({
           ok: false,
           status: 401,
