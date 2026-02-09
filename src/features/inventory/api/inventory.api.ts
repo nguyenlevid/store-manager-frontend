@@ -123,14 +123,19 @@ export async function getInventoryItems(
   if (filters?.tags && filters.tags.length > 0)
     params.append('tags', filters.tags.join(','));
   if (filters?.storeHouse) params.append('storeHouse', filters.storeHouse);
+  
+  // Request populated storeHouse data
+  params.append('populate', 'storeHouse');
 
   const queryString = params.toString();
   const endpoint = queryString ? `/item?${queryString}` : '/item';
 
   console.log('📦 Fetching items from:', endpoint);
-  const backendItems = await apiClient.get<BackendItem[]>(endpoint);
-  console.log('📦 Backend response:', backendItems);
+  const response = await apiClient.get<{ items: BackendItem[]; pagination: any }>(endpoint);
+  console.log('📦 Backend response:', response);
 
+  // Extract items from paginated response
+  const backendItems = response?.items || [];
   const mappedItems = Array.isArray(backendItems)
     ? backendItems.map(mapBackendItem)
     : [];
@@ -266,4 +271,48 @@ export async function deleteItem(itemId: string): Promise<void> {
   }
 
   await apiClient.delete(`/item/${itemId}`);
+}
+
+/**
+ * Get unique units from all items
+ */
+export async function getItemUnits(): Promise<string[]> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: getItemUnits');
+    
+    // Extract unique units from mock items
+    const units = Array.from(new Set(MOCK_ITEMS.map(item => item.unit)));
+    return units.sort();
+  }
+
+  const units = await apiClient.get<string[]>('/item/units');
+  return units;
+}
+
+/**
+ * Get distinct tags from all items (limited to top N most used)
+ */
+export async function getItemTags(limit: number = 12): Promise<string[]> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    console.log('🔧 Mock: getItemTags', limit);
+    
+    // Extract all tags and count occurrences
+    const tagCounts = new Map<string, number>();
+    MOCK_ITEMS.forEach(item => {
+      item.tags.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
+    });
+    
+    // Sort by count and return top N
+    return Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(([tag]) => tag);
+  }
+
+  const tags = await apiClient.get<string[]>(`/item/tags?limit=${limit}`);
+  return tags;
 }

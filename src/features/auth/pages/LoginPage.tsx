@@ -1,13 +1,20 @@
-import { createSignal } from 'solid-js';
+import { createSignal, createEffect } from 'solid-js';
 import { useNavigate, useSearchParams } from '@solidjs/router';
 import { Card, CardHeader, CardBody, Input, Button } from '@/shared/ui';
-import { loginUser } from '../store/session.store';
+import { loginUser, user, status, isInitialized } from '../store/session.store';
 import { notificationStore } from '@/shared/stores/notification.store';
 import { getErrorMessage } from '@/shared/lib/error-messages';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Redirect if already authenticated (only after session is initialized)
+  createEffect(() => {
+    if (isInitialized() && status() === 'authenticated' && user()) {
+      navigate('/', { replace: true });
+    }
+  });
 
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');

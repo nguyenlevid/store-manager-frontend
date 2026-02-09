@@ -1,14 +1,21 @@
-import { createSignal } from 'solid-js';
+import { createSignal, createEffect } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { Card, CardHeader, CardBody, Input, Button } from '@/shared/ui';
 import { signup } from '../api/auth.api';
 import type { AppError } from '@/shared/types/api.types';
-import { setUser, setStatus } from '../store/session.store';
+import { setUser, setStatus, user, status, isInitialized } from '../store/session.store';
 import { notificationStore } from '@/shared/stores/notification.store';
 import { getErrorMessage } from '@/shared/lib/error-messages';
 
 export default function SignupPage() {
   const navigate = useNavigate();
+
+  // Redirect if already authenticated (only after session is initialized)
+  createEffect(() => {
+    if (isInitialized() && status() === 'authenticated' && user()) {
+      navigate('/', { replace: true });
+    }
+  });
 
   // Calculate max birth date (must be at least 18 years old)
   const getMaxBirthDate = () => {

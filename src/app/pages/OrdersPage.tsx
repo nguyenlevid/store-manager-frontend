@@ -36,9 +36,7 @@ export default function OrdersPage() {
     switch (status) {
       case 'pending':
         return 'bg-status-warning-bg text-status-warning-text';
-      case 'itemsDelivered':
-        return 'bg-status-info-bg text-status-info-text';
-      case 'paymentCompleted':
+      case 'completed':
         return 'bg-status-success-bg text-status-success-text';
       case 'cancelled':
         return 'bg-status-danger-bg text-status-danger-text';
@@ -90,14 +88,8 @@ export default function OrdersPage() {
           Pending
         </Button>
         <Button
-          onClick={() => setFilter('itemsDelivered')}
-          variant={filter() === 'itemsDelivered' ? 'primary' : 'outline'}
-        >
-          Delivered
-        </Button>
-        <Button
-          onClick={() => setFilter('paymentCompleted')}
-          variant={filter() === 'paymentCompleted' ? 'primary' : 'outline'}
+          onClick={() => setFilter('completed')}
+          variant={filter() === 'completed' ? 'primary' : 'outline'}
         >
           Completed
         </Button>

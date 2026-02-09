@@ -18,9 +18,9 @@ interface BackendPartner {
   _id: string;
   partnerName: string;
   partnerType: 'supplier' | 'client';
-  phoneNumber: string;
+  phoneNumber?: string;
   email?: string;
-  address: string;
+  address?: string;
   worksWithBusiness: string;
   createdAt?: string;
   updatedAt?: string;
@@ -82,7 +82,7 @@ export async function getPartners(
       (p) =>
         p.partnerName.toLowerCase().includes(search) ||
         p.email?.toLowerCase().includes(search) ||
-        p.phoneNumber.includes(search)
+        p.phoneNumber?.toLowerCase().includes(search)
     );
   }
 
@@ -140,4 +140,20 @@ export async function updatePartner(
  */
 export async function deletePartner(partnerId: string): Promise<void> {
   await apiClient.delete(`/partner/${partnerId}`);
+}
+
+/**
+ * Get transactions for a client (partner)
+ */
+export async function getPartnerTransactions(partnerId: string): Promise<any[]> {
+  const transactions = await apiClient.get<any[]>(`/partner/${partnerId}/transactions`);
+  return transactions || [];
+}
+
+/**
+ * Get imports for a supplier (partner)
+ */
+export async function getPartnerImports(partnerId: string): Promise<any[]> {
+  const imports = await apiClient.get<any[]>(`/partner/${partnerId}/imports`);
+  return imports || [];
 }

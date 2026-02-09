@@ -1,6 +1,7 @@
 import { For, Show, createSignal, type Component } from 'solid-js';
 import { StockStatusBadge } from './StockStatusBadge';
-import { StockAdjustmentModal } from './StockAdjustmentModal';
+import { CreateImportModal } from './CreateImportModal';
+import { ViewItemDetailsModal } from './ViewItemDetailsModal';
 import type { Item } from '../types/inventory.types';
 import { getStockStatus } from '../lib/mock-inventory';
 
@@ -11,7 +12,8 @@ interface InventoryTableProps {
 
 export const InventoryTable: Component<InventoryTableProps> = (props) => {
   const [selectedItem, setSelectedItem] = createSignal<Item | null>(null);
-  const [isAdjustModalOpen, setIsAdjustModalOpen] = createSignal(false);
+  const [isImportModalOpen, setIsImportModalOpen] = createSignal(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = createSignal(false);
   const [actionMenuItem, setActionMenuItem] = createSignal<Item | null>(null);
 
   const handleRowClick = (item: Item) => {
@@ -22,20 +24,20 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
     setActionMenuItem(null);
   };
 
-  const handleAdjustStock = (item: Item) => {
+  const handleImportStock = (item: Item) => {
     setSelectedItem(item);
-    setIsAdjustModalOpen(true);
+    setIsImportModalOpen(true);
     setActionMenuItem(null);
   };
 
   const handleViewDetails = (item: Item) => {
-    // TODO: Implement view details functionality
-    console.log('View details for:', item.name);
+    setSelectedItem(item);
+    setIsDetailsModalOpen(true);
     setActionMenuItem(null);
   };
 
-  const handleAdjustComplete = () => {
-    setIsAdjustModalOpen(false);
+  const handleImportComplete = () => {
+    setIsImportModalOpen(false);
     setSelectedItem(null);
     props.onRefresh();
   };
@@ -298,7 +300,7 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
               <div class="space-y-2">
                 <button
                   type="button"
-                  onClick={() => handleAdjustStock(item())}
+                  onClick={() => handleImportStock(item())}
                   class="flex w-full items-center gap-3 rounded-lg border border-border-default bg-bg-surface px-4 py-3 text-left transition-colors hover:bg-bg-hover focus:outline-none focus:ring-2 focus:ring-border-focus"
                 >
                   <svg
@@ -316,10 +318,10 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
                   </svg>
                   <div>
                     <div class="text-sm font-medium text-text-primary">
-                      Adjust Stock
+                      Import Stock
                     </div>
                     <div class="text-xs text-text-secondary">
-                      Add or remove items
+                      Create import order
                     </div>
                   </div>
                 </button>
@@ -373,12 +375,24 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
 
       <Show when={selectedItem()}>
         {(item) => (
-          <StockAdjustmentModal
-            item={item()}
-            isOpen={isAdjustModalOpen()}
-            onClose={() => setIsAdjustModalOpen(false)}
-            onComplete={handleAdjustComplete}
-          />
+          <>
+            <CreateImportModal
+              item={item()}
+              isOpen={isImportModalOpen()}
+              onClose={() => setIsImportModalOpen(false)}
+              onSuccess={handleImportComplete}
+            />
+            <ViewItemDetailsModal
+              item={item()}
+              isOpen={isDetailsModalOpen()}
+              onClose={() => setIsDetailsModalOpen(false)}
+              onSuccess={() => {
+                setIsDetailsModalOpen(false);
+                setSelectedItem(null);
+                props.onRefresh();
+              }}
+            />
+          </>
         )}
       </Show>
     </>

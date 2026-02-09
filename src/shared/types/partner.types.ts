@@ -10,9 +10,9 @@ export interface Partner {
   id: string;
   partnerName: string;
   partnerType: PartnerType;
-  phoneNumber: string;
+  phoneNumber?: string;
   email?: string;
-  address: string;
+  address?: string;
   worksWithBusiness: string;
   createdAt: string;
   updatedAt: string;
@@ -21,9 +21,9 @@ export interface Partner {
 export interface PartnerFormData {
   partnerName: string;
   partnerType: PartnerType;
-  phoneNumber: string;
+  phoneNumber?: string;
   email?: string;
-  address: string;
+  address?: string;
 }
 
 export interface PartnerFilters {

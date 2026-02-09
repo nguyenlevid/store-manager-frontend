@@ -17,7 +17,7 @@ import type {
 interface BackendImport {
   _id: string;
   business: string;
-  supplierId: string | { _id: string; partnerName: string };
+  supplierId?: string | { _id: string; partnerName: string } | null;
   item: Array<{
     itemId: string | { _id: string; name: string };
     quantity: number;
@@ -25,8 +25,9 @@ interface BackendImport {
     totalPrice: number;
   }>;
   totalPrice: number;
-  status: 'pending' | 'done';
-  completedDate?: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  itemsReceivedDate?: string;
+  paymentCompletedDate?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -46,13 +47,14 @@ function mapBackendImport(importRecord: BackendImport): Import {
     throw new Error('Import missing _id or id field');
   }
 
-  // Handle populated supplier
-  const supplierId =
-    typeof importRecord.supplierId === 'string'
+  // Handle populated supplier (can be null/undefined)
+  const supplierId = !importRecord.supplierId
+    ? undefined
+    : typeof importRecord.supplierId === 'string'
       ? importRecord.supplierId
       : importRecord.supplierId._id;
   const supplierName =
-    typeof importRecord.supplierId === 'object'
+    importRecord.supplierId && typeof importRecord.supplierId === 'object'
       ? importRecord.supplierId.partnerName
       : undefined;
 
@@ -80,7 +82,8 @@ function mapBackendImport(importRecord: BackendImport): Import {
     items,
     totalPrice: importRecord.totalPrice,
     status: importRecord.status,
-    completedDate: importRecord.completedDate,
+    itemsReceivedDate: importRecord.itemsReceivedDate,
+    paymentCompletedDate: importRecord.paymentCompletedDate,
     createdAt: importRecord.createdAt || new Date().toISOString(),
     updatedAt: importRecord.updatedAt || new Date().toISOString(),
   };
@@ -132,7 +135,14 @@ export async function getPendingImports(): Promise<Import[]> {
  * Get completed imports only
  */
 export async function getCompletedImports(): Promise<Import[]> {
-  return getImports({ status: 'done' });
+  return getImports({ status: 'completed' });
+}
+
+/**
+ * Get cancelled imports only
+ */
+export async function getCancelledImports(): Promise<Import[]> {
+  return getImports({ status: 'cancelled' });
 }
 
 /**
@@ -205,10 +215,59 @@ export async function updateImport(
 }
 
 /**
+ * Execute import action
+ */
+export async function executeImportAction(
+  importId: string,
+  action:
+    | 'markPending'
+    | 'markCompleted'
+    | 'markCancelled'
+    | 'markItemsReceived'
+    | 'markPaymentCompleted'
+): Promise<Import> {
+  const response = await apiClient.patch<{
+    message: string;
+    import: BackendImport;
+  }>(`/import/${importId}/action`, { action });
+  return mapBackendImport(response.import);
+}
+
+/**
+ * Mark import items as received (adds to inventory)
+ * Server generates timestamp automatically
+ */
+export async function markItemsReceived(importId: string): Promise<Import> {
+  return executeImportAction(importId, 'markItemsReceived');
+}
+
+/**
+ * Mark import payment as completed (to supplier)
+ * Server generates timestamp automatically
+ */
+export async function completeImportPayment(importId: string): Promise<Import> {
+  return executeImportAction(importId, 'markPaymentCompleted');
+}
+
+/**
+ * Mark import as pending
+ */
+export async function markImportPending(importId: string): Promise<Import> {
+  return executeImportAction(importId, 'markPending');
+}
+
+/**
  * Mark import as completed
  */
 export async function completeImport(importId: string): Promise<Import> {
-  return updateImport(importId, { status: 'done' });
+  return executeImportAction(importId, 'markCompleted');
+}
+
+/**
+ * Cancel import
+ */
+export async function cancelImport(importId: string): Promise<Import> {
+  return executeImportAction(importId, 'markCancelled');
 }
 
 /**

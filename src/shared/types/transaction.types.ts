@@ -4,11 +4,7 @@
  * Transactions represent orders/sales to clients
  */
 
-export type TransactionStatus =
-  | 'pending'
-  | 'itemsDelivered'
-  | 'paymentCompleted'
-  | 'cancelled';
+export type TransactionStatus = 'pending' | 'completed' | 'cancelled';
 
 export interface TransactionItem {
   itemId: string;

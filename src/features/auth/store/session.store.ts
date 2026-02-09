@@ -142,6 +142,9 @@ export const session = {
   isInitialized,
 };
 
+// Export individual signals for convenience
+export { status, user, error, isInitialized };
+
 /**
  * Get current access token from memory
  */

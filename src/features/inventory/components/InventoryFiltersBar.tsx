@@ -1,14 +1,15 @@
 import {
   createSignal,
   createResource,
+  createEffect,
   Show,
   For,
   type Component,
 } from 'solid-js';
 import { Button } from '@/shared/ui/Button';
 import type { InventoryFilters, StockStatus } from '../types/inventory.types';
-import { getAllTags, MOCK_ITEMS } from '../lib/mock-inventory';
 import { getStorehouses } from '@/shared/api';
+import { getItemTags } from '../api/inventory.api';
 
 interface InventoryFiltersBarProps {
   filters: InventoryFilters;
@@ -20,13 +21,16 @@ interface InventoryFiltersBarProps {
 export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
   props
 ) => {
-  const [searchInput, setSearchInput] = createSignal(
-    props.filters.search || ''
-  );
-  const allTags = getAllTags(MOCK_ITEMS);
+  const [searchInput, setSearchInput] = createSignal('');
 
-  // Fetch real storehouses from API
+  // Sync searchInput with props.filters.search
+  createEffect(() => {
+    setSearchInput(props.filters.search || '');
+  });
+
+  // Fetch real storehouses and tags from API
   const [storehouses] = createResource(() => getStorehouses());
+  const [tags] = createResource(() => getItemTags(12)); // Get top 12 tags
 
   const handleSearch = (e: Event) => {
     e.preventDefault();
@@ -106,11 +110,9 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
       <div class="flex flex-wrap items-center gap-3">
         {/* Status filter */}
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium text-text-primary">Status:</span>
+          <span class="text-sm font-medium text-text-primary">Stock:</span>
           <div class="flex gap-2">
-            <For
-              each={['all', 'in-stock', 'low-stock', 'out-of-stock'] as const}
-            >
+            <For each={['all', 'out-of-stock'] as const}>
               {(status) => (
                 <button
                   type="button"
@@ -121,14 +123,7 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
                       : 'border-border-default bg-bg-surface text-text-primary hover:bg-bg-hover'
                   }`}
                 >
-                  {status === 'all'
-                    ? 'All'
-                    : status
-                        .split('-')
-                        .map(
-                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                        )
-                        .join(' ')}
+                  {status === 'all' ? 'All' : 'Out of Stock'}
                 </button>
               )}
             </For>
@@ -158,28 +153,40 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
         </div>
 
         {/* Tag chips */}
-        <Show when={allTags.length > 0}>
-          <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-text-primary">Tags:</span>
-            <div class="flex flex-wrap gap-2">
-              <For each={allTags}>
-                {(tag) => (
-                  <button
-                    type="button"
-                    onClick={() => handleTagToggle(tag)}
-                    class={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                      props.filters.tags?.includes(tag)
-                        ? 'border-accent-primary bg-accent-primary-subtle text-accent-primary'
-                        : 'border-border-default bg-bg-surface text-text-primary hover:bg-bg-hover'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                )}
-              </For>
-            </div>
-          </div>
-        </Show>
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-medium text-text-primary">Tags:</span>
+          <Show
+            when={!tags.loading}
+            fallback={
+              <span class="text-xs text-text-secondary">Loading tags...</span>
+            }
+          >
+            <Show
+              when={tags() && tags()!.length > 0}
+              fallback={
+                <span class="text-xs text-text-muted">No tags available yet</span>
+              }
+            >
+              <div class="flex flex-wrap gap-2">
+                <For each={tags()}>
+                  {(tag) => (
+                    <button
+                      type="button"
+                      onClick={() => handleTagToggle(tag)}
+                      class={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        props.filters.tags?.includes(tag)
+                          ? 'border-accent-primary bg-accent-primary-subtle text-accent-primary'
+                          : 'border-border-default bg-bg-surface text-text-primary hover:bg-bg-hover'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  )}
+                </For>
+              </div>
+            </Show>
+          </Show>
+        </div>
       </div>
 
       {/* Results count */}

@@ -25,7 +25,7 @@ interface BackendTransaction {
     totalPrice: number;
   }>;
   totalPrice: number;
-  status: 'pending' | 'itemsDelivered' | 'paymentCompleted' | 'cancelled';
+  status: 'pending' | 'completed' | 'cancelled';
   itemsDeliveredDate?: string;
   paymentCompletedDate?: string;
   createdAt?: string;
@@ -210,12 +210,67 @@ export async function updateTransaction(
 }
 
 /**
+ * Execute transaction action
+ */
+export async function executeTransactionAction(
+  transactionId: string,
+  action:
+    | 'markPending'
+    | 'markCompleted'
+    | 'markCancelled'
+    | 'markItemsDelivered'
+    | 'markPaymentCompleted'
+): Promise<Transaction> {
+  const response = await apiClient.patch<{
+    message: string;
+    transaction: BackendTransaction;
+  }>(`/transaction/${transactionId}/action`, { action });
+  return mapBackendTransaction(response.transaction);
+}
+
+/**
+ * Mark transaction items as delivered (deducts from inventory)
+ * Server generates timestamp automatically
+ */
+export async function markItemsDelivered(
+  transactionId: string
+): Promise<Transaction> {
+  return executeTransactionAction(transactionId, 'markItemsDelivered');
+}
+
+/**
+ * Mark transaction payment as completed
+ * Server generates timestamp automatically
+ */
+export async function completeTransactionPayment(
+  transactionId: string
+): Promise<Transaction> {
+  return executeTransactionAction(transactionId, 'markPaymentCompleted');
+}
+
+/**
+ * Mark transaction as pending
+ */
+export async function markTransactionPending(transactionId: string): Promise<Transaction> {
+  return executeTransactionAction(transactionId, 'markPending');
+}
+
+/**
+ * Mark transaction as completed
+ */
+export async function completeTransaction(
+  transactionId: string
+): Promise<Transaction> {
+  return executeTransactionAction(transactionId, 'markCompleted');
+}
+
+/**
  * Cancel transaction
  */
 export async function cancelTransaction(
   transactionId: string
 ): Promise<Transaction> {
-  return updateTransaction(transactionId, { status: 'cancelled' });
+  return executeTransactionAction(transactionId, 'markCancelled');
 }
 
 /**

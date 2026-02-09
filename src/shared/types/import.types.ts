@@ -4,7 +4,7 @@
  * Imports represent stock purchases from suppliers
  */
 
-export type ImportStatus = 'pending' | 'done';
+export type ImportStatus = 'pending' | 'completed' | 'cancelled';
 
 export interface ImportItem {
   itemId: string;
@@ -17,18 +17,19 @@ export interface ImportItem {
 export interface Import {
   id: string;
   business: string;
-  supplierId: string;
+  supplierId?: string;
   supplierName?: string; // Populated field
   items: ImportItem[];
   totalPrice: number;
   status: ImportStatus;
-  completedDate?: string;
+  itemsReceivedDate?: string;
+  paymentCompletedDate?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ImportFormData {
-  supplierId: string;
+  supplierId?: string; // Optional - for imports without a specific supplier
   items: Array<{
     itemId: string;
     quantity: number;

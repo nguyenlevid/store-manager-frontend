@@ -1,9 +1,10 @@
 import { createSignal, createResource, Show } from 'solid-js';
 import { Button } from '@/shared/ui/Button';
-import { Alert } from '@/shared/ui/Alert';
 import { InventoryTable } from '@/features/inventory/components/InventoryTable';
 import { InventoryFiltersBar } from '@/features/inventory/components/InventoryFiltersBar';
+import { AddItemModal } from '@/features/inventory/components/AddItemModal';
 import { getInventoryItems } from '@/features/inventory/api/inventory.api';
+import { getStorehouses } from '@/shared/api/storehouses.api';
 import {
   getInventorySummary,
   MOCK_ITEMS,
@@ -16,13 +17,8 @@ export default function InventoryPage() {
   });
 
   const [items, { refetch }] = createResource(filters, getInventoryItems);
-
-  console.log(
-    '🔍 InventoryPage render - items.loading:',
-    items.loading,
-    'items():',
-    items()
-  );
+  const [storehouses] = createResource(() => getStorehouses());
+  const [isModalOpen, setIsModalOpen] = createSignal(false);
 
   const summary = () => {
     const currentItems = items();
@@ -49,7 +45,7 @@ export default function InventoryPage() {
             Track and manage your stock levels across all locations
           </p>
         </div>
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
           <svg
             class="mr-2 h-5 w-5"
             fill="none"
@@ -70,7 +66,7 @@ export default function InventoryPage() {
       {/* Summary Cards */}
       <Show when={summary()}>
         {(stats) => (
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {/* Total SKUs */}
             <div class="rounded-lg border border-border-default bg-bg-surface p-5 shadow-sm">
               <div class="flex items-center justify-between">
@@ -129,35 +125,6 @@ export default function InventoryPage() {
               </div>
             </div>
 
-            {/* Low Stock Alert */}
-            <div class="rounded-lg border border-border-default bg-status-warning-bg p-5 shadow-sm">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm font-medium text-status-warning-text">
-                    Low Stock
-                  </p>
-                  <p class="mt-2 text-3xl font-bold text-status-warning-text">
-                    {stats().lowStockCount}
-                  </p>
-                </div>
-                <div class="rounded-full bg-accent-warning-subtle p-3">
-                  <svg
-                    class="h-6 w-6 text-accent-warning"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
             {/* Out of Stock */}
             <div class="rounded-lg border border-border-default bg-status-danger-bg p-5 shadow-sm">
               <div class="flex items-center justify-between">
@@ -190,25 +157,6 @@ export default function InventoryPage() {
         )}
       </Show>
 
-      {/* Low Stock Alert Banner */}
-      <Show when={summary() && summary()!.lowStockCount > 0}>
-        <Alert variant="warning">
-          <div class="flex items-center justify-between">
-            <span>
-              <strong>{summary()!.lowStockCount} items</strong> are running low
-              on stock. Consider reordering soon.
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setFilters({ ...filters(), status: 'low-stock' })}
-            >
-              View Items
-            </Button>
-          </div>
-        </Alert>
-      </Show>
-
       {/* Filters */}
       <InventoryFiltersBar
         filters={filters()}
@@ -233,6 +181,17 @@ export default function InventoryPage() {
           <InventoryTable items={items()!} onRefresh={refetch} />
         </Show>
       </Show>
+
+      {/* Add Item Modal */}
+      <AddItemModal
+        isOpen={isModalOpen()}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          refetch();
+        }}
+        storehouses={storehouses() ?? []}
+      />
     </div>
   );
 }
