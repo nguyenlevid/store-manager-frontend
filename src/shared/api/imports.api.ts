@@ -17,7 +17,10 @@ import type {
 interface BackendImport {
   _id: string;
   business: string;
-  supplierId?: string | { _id: string; partnerName: string } | null;
+  supplierId?:
+    | string
+    | { _id: string; partnerName: string; email?: string; phoneNumber?: string }
+    | null;
   item: Array<{
     itemId: string | { _id: string; name: string };
     quantity: number;
@@ -57,6 +60,14 @@ function mapBackendImport(importRecord: BackendImport): Import {
     importRecord.supplierId && typeof importRecord.supplierId === 'object'
       ? importRecord.supplierId.partnerName
       : undefined;
+  const supplierEmail =
+    importRecord.supplierId && typeof importRecord.supplierId === 'object'
+      ? importRecord.supplierId.email
+      : undefined;
+  const supplierPhoneNumber =
+    importRecord.supplierId && typeof importRecord.supplierId === 'object'
+      ? importRecord.supplierId.phoneNumber
+      : undefined;
 
   // Map items
   const items = importRecord.item.map((item) => {
@@ -79,6 +90,8 @@ function mapBackendImport(importRecord: BackendImport): Import {
     business: importRecord.business,
     supplierId,
     supplierName,
+    supplierEmail,
+    supplierPhoneNumber,
     items,
     totalPrice: importRecord.totalPrice,
     status: importRecord.status,
@@ -101,17 +114,34 @@ export async function getImports(filters?: ImportFilters): Promise<Import[]> {
   if (filters?.supplierId) {
     params.append('supplierId', filters.supplierId);
   }
+  if (filters?.page) {
+    params.append('page', filters.page.toString());
+  }
+  if (filters?.limit) {
+    params.append('limit', filters.limit.toString());
+  }
+  if (filters?.sortBy) {
+    params.append('sortBy', filters.sortBy);
+  }
+  if (filters?.order) {
+    params.append('order', filters.order);
+  }
 
   const queryString = params.toString();
   const endpoint = queryString ? `/import?${queryString}` : '/import';
 
-  const backendImports = await apiClient.get<BackendImport[]>(endpoint);
+  const response = await apiClient.get<{
+    items: BackendImport[];
+    pagination: any;
+  }>(endpoint);
 
+  // Handle both paginated and non-paginated responses
+  const backendImports = response?.items || [];
   let imports = Array.isArray(backendImports)
     ? backendImports.map(mapBackendImport)
     : [];
 
-  // Client-side search filter
+  // Client-side search filter (applied after pagination)
   if (filters?.search) {
     const search = filters.search.toLowerCase();
     imports = imports.filter(
@@ -122,6 +152,57 @@ export async function getImports(filters?: ImportFilters): Promise<Import[]> {
   }
 
   return imports;
+}
+
+/**
+ * Get imports with pagination info
+ */
+export async function getImportsWithPagination(
+  filters?: ImportFilters
+): Promise<{ imports: Import[]; pagination: any }> {
+  const params = new URLSearchParams();
+
+  if (filters?.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+  if (filters?.supplierId) {
+    params.append('supplierId', filters.supplierId);
+  }
+  if (filters?.page) {
+    params.append('page', filters.page.toString());
+  }
+  if (filters?.limit) {
+    params.append('limit', filters.limit.toString());
+  }
+  if (filters?.sortBy) {
+    params.append('sortBy', filters.sortBy);
+  }
+  if (filters?.order) {
+    params.append('order', filters.order);
+  }
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/import?${queryString}` : '/import';
+
+  const response = await apiClient.get<{
+    items: BackendImport[];
+    pagination: any;
+  }>(endpoint);
+
+  const backendImports = response?.items || [];
+  const imports = Array.isArray(backendImports)
+    ? backendImports.map(mapBackendImport)
+    : [];
+
+  return {
+    imports,
+    pagination: response?.pagination || {
+      page: 1,
+      limit: 20,
+      total: imports.length,
+      pages: 1,
+    },
+  };
 }
 
 /**

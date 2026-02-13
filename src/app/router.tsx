@@ -13,6 +13,7 @@ const InventoryPage = lazy(() => import('./pages/InventoryPage'));
 const OrdersPage = lazy(() => import('./pages/OrdersPage'));
 const ImportsPage = lazy(() => import('./pages/ImportsPage'));
 const ClientsPage = lazy(() => import('./pages/ClientsPage'));
+const SuppliersPage = lazy(() => import('./pages/SuppliersPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
@@ -40,6 +41,7 @@ export function AppRouter() {
           <Route path="/orders" component={OrdersPage} />
           <Route path="/imports" component={ImportsPage} />
           <Route path="/clients" component={ClientsPage} />
+          <Route path="/suppliers" component={SuppliersPage} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/profile" component={ProfilePage} />
           <Route path="*" component={NotFoundPage} />

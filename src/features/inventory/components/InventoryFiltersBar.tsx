@@ -8,7 +8,6 @@ import {
 } from 'solid-js';
 import { Button } from '@/shared/ui/Button';
 import type { InventoryFilters, StockStatus } from '../types/inventory.types';
-import { getStorehouses } from '@/shared/api';
 import { getItemTags } from '../api/inventory.api';
 
 interface InventoryFiltersBarProps {
@@ -16,6 +15,7 @@ interface InventoryFiltersBarProps {
   onFiltersChange: (filters: InventoryFilters) => void;
   totalItems: number;
   filteredCount: number;
+  storehouses: any[];
 }
 
 export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
@@ -28,8 +28,7 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
     setSearchInput(props.filters.search || '');
   });
 
-  // Fetch real storehouses and tags from API
-  const [storehouses] = createResource(() => getStorehouses());
+  // Fetch tags from API (storehouses passed as prop to avoid duplicate fetch)
   const [tags] = createResource(() => getItemTags(12)); // Get top 12 tags
 
   const handleSearch = (e: Event) => {
@@ -134,7 +133,7 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-text-primary">Location:</span>
           <Show
-            when={!storehouses.loading}
+            when={props.storehouses.length > 0}
             fallback={
               <span class="text-xs text-text-secondary">Loading...</span>
             }
@@ -145,7 +144,7 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
               class="focus:ring-border-focus/20 rounded-md border border-border-default bg-bg-surface px-3 py-1 text-xs font-medium text-text-primary transition-colors hover:bg-bg-hover focus:border-border-focus focus:outline-none focus:ring-2"
             >
               <option value="all">All Locations</option>
-              <For each={storehouses()}>
+              <For each={props.storehouses}>
                 {(store) => <option value={store.id}>{store.name}</option>}
               </For>
             </select>
@@ -164,7 +163,9 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
             <Show
               when={tags() && tags()!.length > 0}
               fallback={
-                <span class="text-xs text-text-muted">No tags available yet</span>
+                <span class="text-xs text-text-muted">
+                  No tags available yet
+                </span>
               }
             >
               <div class="flex flex-wrap gap-2">
@@ -187,12 +188,6 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
             </Show>
           </Show>
         </div>
-      </div>
-
-      {/* Results count */}
-      <div class="text-sm text-text-secondary">
-        Showing <span class="font-semibold">{props.filteredCount}</span> of{' '}
-        <span class="font-semibold">{props.totalItems}</span> items
       </div>
     </div>
   );

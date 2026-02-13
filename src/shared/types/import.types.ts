@@ -19,6 +19,8 @@ export interface Import {
   business: string;
   supplierId?: string;
   supplierName?: string; // Populated field
+  supplierEmail?: string; // Populated field
+  supplierPhoneNumber?: string; // Populated field
   items: ImportItem[];
   totalPrice: number;
   status: ImportStatus;
@@ -42,4 +44,18 @@ export interface ImportFilters {
   search?: string;
   status?: ImportStatus | 'all';
   supplierId?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  order?: 'asc' | 'desc';
+}
+
+export interface ImportPaginationResponse {
+  items: Import[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }

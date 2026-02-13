@@ -11,3 +11,4 @@ export { Card, CardHeader, CardBody, CardFooter } from './Card';
 export { Alert } from './Alert';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
+export { CopyableId } from './CopyableId';

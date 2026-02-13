@@ -17,7 +17,14 @@ import type {
 interface BackendTransaction {
   _id: string;
   business: string;
-  clientId: string | { _id: string; partnerName: string };
+  clientId:
+    | string
+    | {
+        _id: string;
+        partnerName: string;
+        email?: string;
+        phoneNumber?: string;
+      };
   item: Array<{
     itemId: string | { _id: string; name: string };
     quantity: number;
@@ -56,6 +63,14 @@ function mapBackendTransaction(transaction: BackendTransaction): Transaction {
     typeof transaction.clientId === 'object'
       ? transaction.clientId.partnerName
       : undefined;
+  const clientEmail =
+    typeof transaction.clientId === 'object'
+      ? transaction.clientId.email
+      : undefined;
+  const clientPhoneNumber =
+    typeof transaction.clientId === 'object'
+      ? transaction.clientId.phoneNumber
+      : undefined;
 
   // Map items
   const items = transaction.item.map((item) => {
@@ -78,6 +93,8 @@ function mapBackendTransaction(transaction: BackendTransaction): Transaction {
     business: transaction.business,
     clientId,
     clientName,
+    clientEmail,
+    clientPhoneNumber,
     items,
     totalPrice: transaction.totalPrice,
     status: transaction.status,
@@ -102,18 +119,34 @@ export async function getTransactions(
   if (filters?.clientId) {
     params.append('clientId', filters.clientId);
   }
+  if (filters?.page) {
+    params.append('page', filters.page.toString());
+  }
+  if (filters?.limit) {
+    params.append('limit', filters.limit.toString());
+  }
+  if (filters?.sortBy) {
+    params.append('sortBy', filters.sortBy);
+  }
+  if (filters?.order) {
+    params.append('order', filters.order);
+  }
 
   const queryString = params.toString();
   const endpoint = queryString ? `/transaction?${queryString}` : '/transaction';
 
-  const backendTransactions =
-    await apiClient.get<BackendTransaction[]>(endpoint);
+  const response = await apiClient.get<{
+    items: BackendTransaction[];
+    pagination: any;
+  }>(endpoint);
 
+  // Handle both paginated and non-paginated responses
+  const backendTransactions = response?.items || [];
   let transactions = Array.isArray(backendTransactions)
     ? backendTransactions.map(mapBackendTransaction)
     : [];
 
-  // Client-side search filter
+  // Client-side search filter (applied after pagination)
   if (filters?.search) {
     const search = filters.search.toLowerCase();
     transactions = transactions.filter(
@@ -124,6 +157,57 @@ export async function getTransactions(
   }
 
   return transactions;
+}
+
+/**
+ * Get transactions with pagination info
+ */
+export async function getTransactionsWithPagination(
+  filters?: TransactionFilters
+): Promise<{ transactions: Transaction[]; pagination: any }> {
+  const params = new URLSearchParams();
+
+  if (filters?.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+  if (filters?.clientId) {
+    params.append('clientId', filters.clientId);
+  }
+  if (filters?.page) {
+    params.append('page', filters.page.toString());
+  }
+  if (filters?.limit) {
+    params.append('limit', filters.limit.toString());
+  }
+  if (filters?.sortBy) {
+    params.append('sortBy', filters.sortBy);
+  }
+  if (filters?.order) {
+    params.append('order', filters.order);
+  }
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/transaction?${queryString}` : '/transaction';
+
+  const response = await apiClient.get<{
+    items: BackendTransaction[];
+    pagination: any;
+  }>(endpoint);
+
+  const backendTransactions = response?.items || [];
+  const transactions = Array.isArray(backendTransactions)
+    ? backendTransactions.map(mapBackendTransaction)
+    : [];
+
+  return {
+    transactions,
+    pagination: response?.pagination || {
+      page: 1,
+      limit: 20,
+      total: transactions.length,
+      pages: 1,
+    },
+  };
 }
 
 /**
@@ -251,7 +335,9 @@ export async function completeTransactionPayment(
 /**
  * Mark transaction as pending
  */
-export async function markTransactionPending(transactionId: string): Promise<Transaction> {
+export async function markTransactionPending(
+  transactionId: string
+): Promise<Transaction> {
   return executeTransactionAction(transactionId, 'markPending');
 }
 

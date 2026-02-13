@@ -1,4 +1,10 @@
-import { createSignal, createResource, Show, For, type Component } from 'solid-js';
+import {
+  createSignal,
+  createResource,
+  Show,
+  For,
+  type Component,
+} from 'solid-js';
 import { Button } from '@/shared/ui/Button';
 import type { Item } from '../types/inventory.types';
 import { createImport } from '@/shared/api/imports.api';
@@ -78,7 +84,7 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
       setSupplierId('');
       setQuantity('');
       setUnitPrice('');
-      
+
       props.onSuccess();
     } catch (err) {
       console.error('Failed to create import:', err);
@@ -106,7 +112,7 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
 
   return (
     <Show when={props.isOpen}>
-      <div 
+      <div
         class="fixed inset-0 z-50 flex items-end justify-center bg-bg-overlay sm:items-center"
         onClick={() => handleCancel()}
       >
@@ -117,7 +123,9 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
           {/* Header */}
           <div class="flex items-center justify-between border-b border-border-default px-6 py-4">
             <div>
-              <h2 class="text-xl font-semibold text-text-primary">Import Stock</h2>
+              <h2 class="text-xl font-semibold text-text-primary">
+                Import Stock
+              </h2>
               <p class="mt-1 text-sm text-text-secondary">
                 Create import order for {props.item.name}
               </p>
@@ -127,7 +135,12 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
               onClick={() => handleCancel()}
               class="rounded-lg p-2 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
             >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -163,7 +176,9 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
                     </Show>
                   </div>
                   <div class="text-right">
-                    <p class="text-sm font-medium text-text-secondary">Current Stock</p>
+                    <p class="text-sm font-medium text-text-secondary">
+                      Current Stock
+                    </p>
                     <p class="mt-1 text-lg font-bold text-text-primary">
                       {props.item.quantity} {props.item.unit}
                     </p>
@@ -185,7 +200,9 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
                   <Show when={partners()}>
                     <For each={partners()}>
                       {(partner: Partner) => (
-                        <option value={partner.id}>{partner.partnerName}</option>
+                        <option value={partner.id}>
+                          {partner.partnerName}
+                        </option>
                       )}
                     </For>
                   </Show>
@@ -212,12 +229,15 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
                     required
                   />
                   <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                    <span class="text-sm text-text-muted">{props.item.unit}</span>
+                    <span class="text-sm text-text-muted">
+                      {props.item.unit}
+                    </span>
                   </div>
                 </div>
                 <Show when={quantity() && !isNaN(parseFloat(quantity()))}>
                   <p class="mt-1 text-xs text-text-muted">
-                    New stock will be: {props.item.quantity + parseFloat(quantity())}{' '}
+                    New stock will be:{' '}
+                    {props.item.quantity + parseFloat(quantity())}{' '}
                     {props.item.unit}
                   </p>
                 </Show>
@@ -247,7 +267,9 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
               <Show when={quantity() && unitPrice()}>
                 <div class="rounded-lg border border-border-default bg-bg-surface-subtle p-4">
                   <div class="flex items-center justify-between">
-                    <span class="text-sm font-medium text-text-secondary">Total Amount</span>
+                    <span class="text-sm font-medium text-text-secondary">
+                      Total Amount
+                    </span>
                     <span class="text-xl font-bold text-text-primary">
                       {formatCurrency(calculateTotal())}
                     </span>
@@ -259,7 +281,11 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
 
           {/* Footer */}
           <div class="flex justify-end gap-3 border-t border-border-default px-6 py-4">
-            <Button variant="outline" onClick={() => handleCancel()} disabled={isLoading()}>
+            <Button
+              variant="outline"
+              onClick={() => handleCancel()}
+              disabled={isLoading()}
+            >
               Cancel
             </Button>
             <Button

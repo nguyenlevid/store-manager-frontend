@@ -19,6 +19,8 @@ export interface Transaction {
   business: string;
   clientId: string;
   clientName?: string; // Populated field
+  clientEmail?: string; // Populated field
+  clientPhoneNumber?: string; // Populated field
   items: TransactionItem[];
   totalPrice: number;
   status: TransactionStatus;
@@ -42,4 +44,18 @@ export interface TransactionFilters {
   search?: string;
   status?: TransactionStatus | 'all';
   clientId?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  order?: 'asc' | 'desc';
+}
+
+export interface TransactionPaginationResponse {
+  items: Transaction[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }

@@ -1,6 +1,17 @@
-import { createSignal, createEffect, Show, For, type Component, createResource } from 'solid-js';
+import {
+  createSignal,
+  createEffect,
+  Show,
+  For,
+  type Component,
+  createResource,
+} from 'solid-js';
 import { Button } from '@/shared/ui/Button';
-import { getInventoryItems, updateItem, getItemUnits } from '../api/inventory.api';
+import {
+  getInventoryItems,
+  updateItem,
+  getItemUnits,
+} from '../api/inventory.api';
 import { getStorehouses } from '@/shared/api/storehouses.api';
 import type { Item } from '../types/inventory.types';
 import { notificationStore } from '@/shared/stores/notification.store';
@@ -13,7 +24,9 @@ interface ViewItemDetailsModalProps {
   onSuccess: () => void;
 }
 
-export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props) => {
+export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
+  props
+) => {
   // Edit mode toggle
   const [isEditMode, setIsEditMode] = createSignal(false);
 
@@ -45,7 +58,9 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
   // Resources
   const [allItems] = createResource(() => getInventoryItems());
   const [storehouses] = createResource(() => getStorehouses());
-  const [existingUnits, { refetch: refetchUnits }] = createResource(() => getItemUnits());
+  const [existingUnits, { refetch: refetchUnits }] = createResource(() =>
+    getItemUnits()
+  );
 
   // Refetch units when modal opens
   createEffect(() => {
@@ -89,7 +104,10 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
     if (!items) return;
 
     const filtered = items
-      .filter((item) => item.name.toLowerCase().includes(input) && item.id !== props.item.id)
+      .filter(
+        (item) =>
+          item.name.toLowerCase().includes(input) && item.id !== props.item.id
+      )
       .slice(0, 5);
 
     setNameSuggestions(filtered);
@@ -152,10 +170,10 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
   // Check for conflicting items (similar names)
   const conflictingItems = () => {
     if (!isEditMode()) return [];
-    
+
     const currentName = name().trim().toLowerCase();
     const items = allItems();
-    
+
     if (!items || currentName.length < 2) return [];
 
     return items.filter(
@@ -201,8 +219,10 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
     setIsLoading(true);
 
     try {
-      const selectedStoreHouse = storehouses()?.find((sh: Storehouse) => sh.id === storeHouse());
-      
+      const selectedStoreHouse = storehouses()?.find(
+        (sh: Storehouse) => sh.id === storeHouse()
+      );
+
       if (!selectedStoreHouse) {
         throw new Error('Selected storehouse not found');
       }
@@ -268,11 +288,9 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
     }).format(amount);
   };
 
-
-
   return (
     <Show when={props.isOpen}>
-      <div 
+      <div
         class="fixed inset-0 z-50 flex items-end justify-center bg-bg-overlay sm:items-center"
         onClick={() => handleCancel()}
       >
@@ -287,7 +305,9 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                 {isEditMode() ? 'Edit Item' : 'Item Details'}
               </h2>
               <p class="mt-1 text-sm text-text-secondary">
-                {isEditMode() ? 'Update item information' : 'View item information'}
+                {isEditMode()
+                  ? 'Update item information'
+                  : 'View item information'}
               </p>
             </div>
             <button
@@ -295,7 +315,12 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
               onClick={() => props.onClose()}
               class="rounded-lg p-2 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
             >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -307,7 +332,10 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
           </div>
 
           {/* Content */}
-          <form onSubmit={handleSubmit} class="max-h-[70vh] overflow-y-auto px-6 py-4">
+          <form
+            onSubmit={handleSubmit}
+            class="max-h-[70vh] overflow-y-auto px-6 py-4"
+          >
             <div class="space-y-4">
               {/* Error Message */}
               <Show when={error()}>
@@ -321,21 +349,31 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                 <div class="space-y-4">
                   {/* Name */}
                   <div>
-                    <label class="block text-sm font-medium text-text-secondary">Name</label>
-                    <p class="mt-1 text-base text-text-primary">{props.item.name}</p>
+                    <label class="block text-sm font-medium text-text-secondary">
+                      Name
+                    </label>
+                    <p class="mt-1 text-base text-text-primary">
+                      {props.item.name}
+                    </p>
                   </div>
 
                   {/* Description */}
                   <Show when={props.item.description}>
                     <div>
-                      <label class="block text-sm font-medium text-text-secondary">Description</label>
-                      <p class="mt-1 text-base text-text-primary">{props.item.description}</p>
+                      <label class="block text-sm font-medium text-text-secondary">
+                        Description
+                      </label>
+                      <p class="mt-1 text-base text-text-primary">
+                        {props.item.description}
+                      </p>
                     </div>
                   </Show>
 
                   {/* Unit Price */}
                   <div>
-                    <label class="block text-sm font-medium text-text-secondary">Unit Price</label>
+                    <label class="block text-sm font-medium text-text-secondary">
+                      Unit Price
+                    </label>
                     <p class="mt-1 text-base font-medium text-text-primary">
                       {formatCurrency(props.item.unitPrice)}
                     </p>
@@ -344,15 +382,21 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                   {/* Stock Info */}
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="block text-sm font-medium text-text-secondary">Quantity</label>
+                      <label class="block text-sm font-medium text-text-secondary">
+                        Quantity
+                      </label>
                       <p class="mt-1 text-base text-text-primary">
                         {props.item.quantity} {props.item.unit}
                       </p>
                     </div>
                     <Show when={props.item.reorderLevel}>
                       <div>
-                        <label class="block text-sm font-medium text-text-secondary">Reorder Level</label>
-                        <p class="mt-1 text-base text-text-primary">{props.item.reorderLevel}</p>
+                        <label class="block text-sm font-medium text-text-secondary">
+                          Reorder Level
+                        </label>
+                        <p class="mt-1 text-base text-text-primary">
+                          {props.item.reorderLevel}
+                        </p>
                       </div>
                     </Show>
                   </div>
@@ -360,21 +404,31 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                   {/* Origin */}
                   <Show when={props.item.origin}>
                     <div>
-                      <label class="block text-sm font-medium text-text-secondary">Origin</label>
-                      <p class="mt-1 text-base text-text-primary">{props.item.origin}</p>
+                      <label class="block text-sm font-medium text-text-secondary">
+                        Origin
+                      </label>
+                      <p class="mt-1 text-base text-text-primary">
+                        {props.item.origin}
+                      </p>
                     </div>
                   </Show>
 
                   {/* Storehouse */}
                   <div>
-                    <label class="block text-sm font-medium text-text-secondary">Location</label>
-                    <p class="mt-1 text-base text-text-primary">{props.item.storeHouse.name}</p>
+                    <label class="block text-sm font-medium text-text-secondary">
+                      Location
+                    </label>
+                    <p class="mt-1 text-base text-text-primary">
+                      {props.item.storeHouse.name}
+                    </p>
                   </div>
 
                   {/* Tags */}
                   <Show when={props.item.tags.length > 0}>
                     <div>
-                      <label class="block text-sm font-medium text-text-secondary">Tags</label>
+                      <label class="block text-sm font-medium text-text-secondary">
+                        Tags
+                      </label>
                       <div class="mt-2 flex flex-wrap gap-2">
                         <For each={props.item.tags}>
                           {(tag) => (
@@ -403,7 +457,10 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                       onInput={(e) => handleNameInput(e.currentTarget.value)}
                       onFocus={() => {
                         setShowUnitSuggestions(false);
-                        if (nameInput().trim().length >= 2 && nameSuggestions().length > 0) {
+                        if (
+                          nameInput().trim().length >= 2 &&
+                          nameSuggestions().length > 0
+                        ) {
                           setShowNameSuggestions(true);
                         }
                       }}
@@ -413,14 +470,20 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                     />
 
                     {/* Name suggestions dropdown */}
-                    <Show when={showNameSuggestions() && nameSuggestions().length > 0}>
+                    <Show
+                      when={
+                        showNameSuggestions() && nameSuggestions().length > 0
+                      }
+                    >
                       <div class="absolute z-10 mt-1 w-full rounded-lg border border-border-default bg-bg-surface shadow-lg">
                         <div class="max-h-48 overflow-y-auto p-2">
                           <For each={nameSuggestions()}>
                             {(item) => (
                               <button
                                 type="button"
-                                onClick={() => handleNameSuggestionClick(item.name)}
+                                onClick={() =>
+                                  handleNameSuggestionClick(item.name)
+                                }
                                 class="w-full rounded px-3 py-2 text-left text-sm text-text-primary hover:bg-bg-hover"
                               >
                                 {item.name}
@@ -436,7 +499,7 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
 
                     {/* Conflict warning */}
                     <Show when={conflictingItems().length > 0}>
-                      <div class="mt-2 rounded border border-status-warning-border bg-status-warning-bg p-2 text-xs text-status-warning-text">
+                      <div class="border-status-warning-border mt-2 rounded border bg-status-warning-bg p-2 text-xs text-status-warning-text">
                         <p class="font-medium">⚠️ Similar item exists:</p>
                         <ul class="ml-4 mt-1 list-disc">
                           <For each={conflictingItems()}>
@@ -530,14 +593,20 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                       />
 
                       {/* Unit suggestions dropdown */}
-                      <Show when={showUnitSuggestions() && filteredUnits().length > 0}>
+                      <Show
+                        when={
+                          showUnitSuggestions() && filteredUnits().length > 0
+                        }
+                      >
                         <div class="absolute z-10 mt-1 w-full rounded-lg border border-border-default bg-bg-surface shadow-lg">
                           <div class="max-h-32 overflow-y-auto p-2">
                             <For each={filteredUnits()}>
                               {(unitOption) => (
                                 <button
                                   type="button"
-                                  onClick={() => handleUnitSuggestionClick(unitOption)}
+                                  onClick={() =>
+                                    handleUnitSuggestionClick(unitOption)
+                                  }
                                   class="w-full rounded px-3 py-1.5 text-left text-sm text-text-primary hover:bg-bg-hover"
                                 >
                                   {unitOption}
@@ -605,7 +674,9 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                       <option value="">Select a storehouse</option>
                       <Show when={storehouses()}>
                         <For each={storehouses()}>
-                          {(sh: Storehouse) => <option value={sh.id}>{sh.name}</option>}
+                          {(sh: Storehouse) => (
+                            <option value={sh.id}>{sh.name}</option>
+                          )}
                         </For>
                       </Show>
                     </select>
@@ -657,7 +728,12 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                         class="flex-1 rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:border-border-focus focus:outline-none focus:ring-1 focus:ring-border-focus"
                         placeholder="Add a tag..."
                       />
-                      <Button type="button" variant="outline" size="sm" onClick={handleAddTag}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddTag}
+                      >
                         Add
                       </Button>
                     </div>
@@ -682,7 +758,11 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (props
                 </>
               }
             >
-              <Button variant="outline" onClick={handleCancel} disabled={isLoading()}>
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isLoading()}
+              >
                 Cancel
               </Button>
               <Button

@@ -136,6 +136,75 @@ export async function updatePartner(
 }
 
 /**
+ * Get partners with pagination
+ */
+export async function getPartnersWithPagination(params: {
+  partnerType?: 'client' | 'supplier' | 'all';
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<{
+  partners: Partner[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+}> {
+  const queryParams = new URLSearchParams();
+
+  if (params.partnerType && params.partnerType !== 'all') {
+    queryParams.append('partnerType', params.partnerType);
+  }
+
+  if (params.page) {
+    queryParams.append('page', params.page.toString());
+  }
+
+  if (params.limit) {
+    queryParams.append('limit', params.limit.toString());
+  }
+
+  if (params.search) {
+    queryParams.append('search', params.search);
+  }
+
+  const response = await apiClient.get<{
+    items: BackendPartner[];
+    pagination: { page: number; limit: number; total: number; pages: number };
+  }>(`/partner/paginated?${queryParams.toString()}`);
+
+  return {
+    partners: response.items.map(mapBackendPartner),
+    pagination: response.pagination,
+  };
+}
+
+/**
+ * Get clients with pagination
+ */
+export async function getClientsWithPagination(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<{
+  partners: Partner[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+}> {
+  return getPartnersWithPagination({ ...params, partnerType: 'client' });
+}
+
+/**
+ * Get suppliers with pagination
+ */
+export async function getSuppliersWithPagination(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<{
+  partners: Partner[];
+  pagination: { page: number; limit: number; total: number; pages: number };
+}> {
+  return getPartnersWithPagination({ ...params, partnerType: 'supplier' });
+}
+
+/**
  * Delete partner
  */
 export async function deletePartner(partnerId: string): Promise<void> {
@@ -145,8 +214,12 @@ export async function deletePartner(partnerId: string): Promise<void> {
 /**
  * Get transactions for a client (partner)
  */
-export async function getPartnerTransactions(partnerId: string): Promise<any[]> {
-  const transactions = await apiClient.get<any[]>(`/partner/${partnerId}/transactions`);
+export async function getPartnerTransactions(
+  partnerId: string
+): Promise<any[]> {
+  const transactions = await apiClient.get<any[]>(
+    `/partner/${partnerId}/transactions`
+  );
   return transactions || [];
 }
 

@@ -1,6 +1,17 @@
-import { createSignal, createResource, createEffect, Show, For, type Component } from 'solid-js';
+import {
+  createSignal,
+  createResource,
+  createEffect,
+  Show,
+  For,
+  type Component,
+} from 'solid-js';
 import { Button } from '@/shared/ui/Button';
-import { getInventoryItems, createItem, getItemUnits } from '../api/inventory.api';
+import {
+  getInventoryItems,
+  createItem,
+  getItemUnits,
+} from '../api/inventory.api';
 import { notificationStore } from '@/shared/stores/notification.store';
 import type { Item } from '../types/inventory.types';
 
@@ -43,9 +54,11 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
 
   // Fetch existing items for autocomplete
   const [existingItems] = createResource(() => getInventoryItems());
-  
+
   // Fetch existing units for autocomplete
-  const [existingUnits, { refetch: refetchUnits }] = createResource(() => getItemUnits());
+  const [existingUnits, { refetch: refetchUnits }] = createResource(() =>
+    getItemUnits()
+  );
 
   // Refetch units when modal opens
   createEffect(() => {
@@ -58,7 +71,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
   const suggestions = () => {
     const input = nameInput().toLowerCase().trim();
     if (!input || input.length < 2) return [];
-    
+
     const items = existingItems();
     if (!items) return [];
 
@@ -79,7 +92,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
   const unitSuggestions = () => {
     const input = unitInput().toLowerCase().trim();
     if (!input) return existingUnits() || [];
-    
+
     const units = existingUnits();
     if (!units) return [];
 
@@ -128,8 +141,10 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
     return items.filter((item) => {
       const itemName = item.name.toLowerCase();
       // Exact match or very similar
-      return itemName === trimmedName || 
-             itemName.replace(/[\s-_]/g, '') === trimmedName.replace(/[\s-_]/g, '');
+      return (
+        itemName === trimmedName ||
+        itemName.replace(/[\s-_]/g, '') === trimmedName.replace(/[\s-_]/g, '')
+      );
     });
   };
 
@@ -140,7 +155,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
 
     try {
       const data = formData();
-      
+
       // Validate
       if (!data.name.trim()) {
         throw new Error('Item name is required');
@@ -179,13 +194,13 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
       };
 
       await createItem(payload);
-      
+
       // Show success notification
       notificationStore.success('Item created successfully!', {
         title: 'Success',
         duration: 4000,
       });
-      
+
       // Reset form
       setFormData({
         name: '',
@@ -199,11 +214,12 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
       });
       setNameInput('');
       setUnitInput('pcs');
-      
+
       props.onSuccess();
       props.onClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create item';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to create item';
       setError(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -240,7 +256,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
           />
 
           {/* Modal panel */}
-          <div 
+          <div
             class="relative inline-block transform overflow-hidden rounded-lg bg-bg-surface text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:align-middle"
             onClick={(e) => {
               // Close dropdown when clicking on modal but not on name input or dropdown
@@ -261,7 +277,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                     type="button"
                     onClick={handleClose}
                     disabled={isSubmitting()}
-                    class="rounded-lg p-1 text-text-secondary hover:bg-bg-subtle hover:text-text-primary disabled:opacity-50"
+                    class="hover:bg-bg-subtle rounded-lg p-1 text-text-secondary hover:text-text-primary disabled:opacity-50"
                   >
                     <svg
                       class="h-6 w-6"
@@ -291,7 +307,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                   </Show>
 
                   {/* Item Name with Autocomplete */}
-                  <div class="relative name-input-wrapper">
+                  <div class="name-input-wrapper relative">
                     <label class="block text-sm font-medium text-text-primary">
                       Item Name <span class="text-red-500">*</span>
                     </label>
@@ -299,12 +315,14 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                       type="text"
                       value={nameInput()}
                       onInput={(e) => handleNameInput(e.currentTarget.value)}
-                      onFocus={() => nameInput().length >= 2 && setShowSuggestions(true)}
+                      onFocus={() =>
+                        nameInput().length >= 2 && setShowSuggestions(true)
+                      }
                       placeholder="Start typing item name..."
                       required
-                      class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                      class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                     />
-                    
+
                     {/* Inline Conflict Warning */}
                     <Show when={!showSuggestions() && nameConflict()}>
                       <div class="mt-2 rounded-lg border border-accent-warning bg-accent-warning-subtle p-3">
@@ -324,13 +342,16 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                           </svg>
                           <div class="flex-1">
                             <p class="text-sm font-medium text-accent-warning">
-                              Similar item{nameConflict()!.length > 1 ? 's' : ''} found
+                              Similar item
+                              {nameConflict()!.length > 1 ? 's' : ''} found
                             </p>
                             <div class="mt-2 space-y-1.5">
                               <For each={nameConflict()!}>
                                 {(item) => (
                                   <div class="text-xs text-text-secondary">
-                                    <span class="font-medium text-text-primary">{item.name}</span>
+                                    <span class="font-medium text-text-primary">
+                                      {item.name}
+                                    </span>
                                     {' • '}
                                     {item.storeHouse.name}
                                     {' • '}
@@ -339,14 +360,15 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                                 )}
                               </For>
                             </div>
-                            <p class="mt-2 text-xs text-text-tertiary">
-                              Consider using the existing item or choose a different name to avoid confusion.
+                            <p class="text-text-tertiary mt-2 text-xs">
+                              Consider using the existing item or choose a
+                              different name to avoid confusion.
                             </p>
                           </div>
                         </div>
                       </div>
                     </Show>
-                    
+
                     {/* Autocomplete Suggestions */}
                     <Show when={showSuggestions() && suggestions().length > 0}>
                       <div class="autocomplete-dropdown absolute z-10 mt-1 w-full rounded-lg border border-border-default bg-bg-surface shadow-lg">
@@ -358,7 +380,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                             <button
                               type="button"
                               onClick={() => handleSuggestionClick(item)}
-                              class="w-full border-t border-border-subtle px-4 py-3 text-left hover:bg-bg-subtle"
+                              class="hover:bg-bg-subtle w-full border-t border-border-subtle px-4 py-3 text-left"
                             >
                               <div class="font-medium text-text-primary">
                                 {item.name}
@@ -368,8 +390,9 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                                   {item.description}
                                 </div>
                               </Show>
-                              <div class="mt-1 text-xs text-text-tertiary">
-                                {item.storeHouse.name} • {item.quantity} {item.unit}
+                              <div class="text-text-tertiary mt-1 text-xs">
+                                {item.storeHouse.name} • {item.quantity}{' '}
+                                {item.unit}
                               </div>
                             </button>
                           )}
@@ -386,7 +409,10 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                     <textarea
                       value={formData().description}
                       onInput={(e) =>
-                        setFormData({ ...formData(), description: e.currentTarget.value })
+                        setFormData({
+                          ...formData(),
+                          description: e.currentTarget.value,
+                        })
                       }
                       onFocus={() => {
                         setShowSuggestions(false);
@@ -394,7 +420,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                       }}
                       rows={3}
                       placeholder="Item description..."
-                      class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                      class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                     />
                   </div>
 
@@ -411,7 +437,10 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                         min="0"
                         value={formData().unitPrice}
                         onInput={(e) =>
-                          setFormData({ ...formData(), unitPrice: e.currentTarget.value })
+                          setFormData({
+                            ...formData(),
+                            unitPrice: e.currentTarget.value,
+                          })
                         }
                         onFocus={() => {
                           setShowSuggestions(false);
@@ -419,7 +448,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                         }}
                         required
                         placeholder="0.00"
-                        class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                        class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                       />
                     </div>
 
@@ -433,14 +462,17 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                         min="0"
                         value={formData().quantity}
                         onInput={(e) =>
-                          setFormData({ ...formData(), quantity: e.currentTarget.value })
+                          setFormData({
+                            ...formData(),
+                            quantity: e.currentTarget.value,
+                          })
                         }
                         onFocus={() => {
                           setShowSuggestions(false);
                           setShowUnitSuggestions(false);
                         }}
                         placeholder="0"
-                        class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                        class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                       />
                     </div>
 
@@ -459,11 +491,15 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                         }}
                         required
                         placeholder="e.g., pcs, box, kg..."
-                        class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                        class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                       />
-                      
+
                       {/* Unit Autocomplete Suggestions */}
-                      <Show when={showUnitSuggestions() && unitSuggestions().length > 0}>
+                      <Show
+                        when={
+                          showUnitSuggestions() && unitSuggestions().length > 0
+                        }
+                      >
                         <div class="autocomplete-dropdown absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-border-default bg-bg-surface shadow-lg">
                           <div class="p-2 text-xs text-text-secondary">
                             Existing units:
@@ -473,7 +509,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                               <button
                                 type="button"
                                 onClick={() => handleUnitSuggestionClick(unit)}
-                                class="w-full border-t border-border-subtle px-4 py-2 text-left text-sm hover:bg-bg-subtle"
+                                class="hover:bg-bg-subtle w-full border-t border-border-subtle px-4 py-2 text-left text-sm"
                               >
                                 <span class="text-text-primary">{unit}</span>
                               </button>
@@ -491,7 +527,10 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                       <select
                         value={formData().storeHouse}
                         onChange={(e) =>
-                          setFormData({ ...formData(), storeHouse: e.currentTarget.value })
+                          setFormData({
+                            ...formData(),
+                            storeHouse: e.currentTarget.value,
+                          })
                         }
                         onFocus={() => {
                           setShowSuggestions(false);
@@ -503,7 +542,9 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                         <option value="">Select storehouse...</option>
                         <For each={props.storehouses}>
                           {(warehouse) => (
-                            <option value={warehouse.id}>{warehouse.name}</option>
+                            <option value={warehouse.id}>
+                              {warehouse.name}
+                            </option>
                           )}
                         </For>
                       </select>
@@ -519,14 +560,17 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                       type="text"
                       value={formData().origin}
                       onInput={(e) =>
-                        setFormData({ ...formData(), origin: e.currentTarget.value })
+                        setFormData({
+                          ...formData(),
+                          origin: e.currentTarget.value,
+                        })
                       }
                       onFocus={() => {
                         setShowSuggestions(false);
                         setShowUnitSuggestions(false);
                       }}
                       placeholder="e.g., China, Taiwan, USA"
-                      class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                      class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                     />
                   </div>
 
@@ -539,16 +583,19 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                       type="text"
                       value={formData().tags}
                       onInput={(e) =>
-                        setFormData({ ...formData(), tags: e.currentTarget.value })
+                        setFormData({
+                          ...formData(),
+                          tags: e.currentTarget.value,
+                        })
                       }
                       onFocus={() => {
                         setShowSuggestions(false);
                         setShowUnitSuggestions(false);
                       }}
                       placeholder="electronics, accessories, computers (comma-separated)"
-                      class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                      class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                     />
-                    <p class="mt-1 text-xs text-text-tertiary">
+                    <p class="text-text-tertiary mt-1 text-xs">
                       Separate tags with commas
                     </p>
                   </div>
@@ -556,7 +603,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
               </div>
 
               {/* Footer */}
-              <div class="border-t border-border-default bg-bg-subtle px-6 py-4">
+              <div class="bg-bg-subtle border-t border-border-default px-6 py-4">
                 <div class="flex justify-end space-x-3">
                   <Button
                     type="button"
@@ -578,7 +625,6 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
             </form>
           </div>
         </div>
-
       </div>
     </Show>
   );

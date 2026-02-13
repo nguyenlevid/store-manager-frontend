@@ -2,11 +2,11 @@ import { createSignal, createResource, Show, For } from 'solid-js';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardBody, CopyableId } from '@/shared/ui';
 import {
-  getClientsWithPagination,
+  getSuppliersWithPagination,
   createPartner,
   updatePartner,
   deletePartner,
-  getPartnerTransactions,
+  getPartnerImports,
 } from '@/shared/api';
 import type { Partner } from '@/shared/types/partner.types';
 
@@ -14,13 +14,13 @@ type ModalMode = 'create' | 'edit' | 'delete' | 'detail' | null;
 
 interface FormData {
   partnerName: string;
-  partnerType: 'client';
+  partnerType: 'supplier';
   phoneNumber: string;
   email: string;
   address: string;
 }
 
-export default function ClientsPage() {
+export default function SuppliersPage() {
   const [searchTerm, setSearchTerm] = createSignal('');
   const [currentPage, setCurrentPage] = createSignal(1);
   const [paginationInfo, setPaginationInfo] = createSignal<any>(null);
@@ -34,21 +34,21 @@ export default function ClientsPage() {
   // Form state
   const [formData, setFormData] = createSignal<FormData>({
     partnerName: '',
-    partnerType: 'client',
+    partnerType: 'supplier',
     phoneNumber: '',
     email: '',
     address: '',
   });
 
-  // Partner details (transactions)
+  // Partner details (imports)
   const [detailData, setDetailData] = createSignal<any[] | null>(null);
   const [loadingDetails, setLoadingDetails] = createSignal(false);
 
-  // Fetch clients with pagination
+  // Fetch suppliers with pagination
   const [partners, { refetch }] = createResource(
     () => ({ search: searchTerm(), page: currentPage() }),
     async ({ search, page }) => {
-      const response = await getClientsWithPagination({
+      const response = await getSuppliersWithPagination({
         page,
         limit: 20,
         search,
@@ -76,7 +76,7 @@ export default function ClientsPage() {
   const openCreateModal = () => {
     setFormData({
       partnerName: '',
-      partnerType: 'client',
+      partnerType: 'supplier',
       phoneNumber: '',
       email: '',
       address: '',
@@ -114,8 +114,8 @@ export default function ClientsPage() {
     setModalMode('detail');
 
     try {
-      const transactions = await getPartnerTransactions(partner.id);
-      setDetailData(transactions);
+      const imports = await getPartnerImports(partner.id);
+      setDetailData(imports);
     } catch (err: any) {
       console.error('Error loading details:', err);
       setError(err.message || 'Failed to load details');
@@ -143,7 +143,7 @@ export default function ClientsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to create partner');
+      setError(err.message || 'Failed to create supplier');
     } finally {
       setIsSubmitting(false);
     }
@@ -162,7 +162,7 @@ export default function ClientsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to update partner');
+      setError(err.message || 'Failed to update supplier');
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +180,7 @@ export default function ClientsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to delete partner');
+      setError(err.message || 'Failed to delete supplier');
     } finally {
       setIsSubmitting(false);
     }
@@ -191,9 +191,9 @@ export default function ClientsPage() {
       {/* Header */}
       <div class="flex items-start justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-text-primary">Clients</h1>
+          <h1 class="text-3xl font-bold text-text-primary">Suppliers</h1>
           <p class="mt-2 text-sm text-text-secondary">
-            Manage your clients (customers)
+            Manage your suppliers (vendors)
           </p>
         </div>
         <Button variant="primary" onClick={openCreateModal}>
@@ -210,7 +210,7 @@ export default function ClientsPage() {
               d="M12 4v16m8-8H4"
             />
           </svg>
-          New Client
+          New Supplier
         </Button>
       </div>
 
@@ -218,21 +218,21 @@ export default function ClientsPage() {
       <div class="flex gap-4">
         <input
           type="text"
-          placeholder="Search clients..."
+          placeholder="Search suppliers..."
           value={searchTerm()}
           onInput={(e) => handleSearchChange(e.currentTarget.value)}
           class="flex-1 rounded-lg border border-border-default bg-bg-surface px-4 py-2 text-text-primary focus:border-transparent focus:ring-2 focus:ring-accent-primary"
         />
       </div>
 
-      {/* Clients List */}
+      {/* Suppliers List */}
       <Card>
         <CardBody>
           <Show
             when={!partners.loading}
             fallback={
               <div class="py-12 text-center">
-                <p class="text-text-secondary">Loading clients...</p>
+                <p class="text-text-secondary">Loading suppliers...</p>
               </div>
             }
           >
@@ -243,7 +243,7 @@ export default function ClientsPage() {
                   when={partners() && partners()!.length > 0}
                   fallback={
                     <div class="py-12 text-center">
-                      <p class="text-text-secondary">No clients found</p>
+                      <p class="text-text-secondary">No suppliers found</p>
                     </div>
                   }
                 >
@@ -289,7 +289,7 @@ export default function ClientsPage() {
                                   <button
                                     onClick={() => openDetailModal(partner)}
                                     class="hover:text-accent-hover text-accent-primary transition-colors"
-                                    title="View transactions"
+                                    title="View imports"
                                   >
                                     <svg
                                       class="h-5 w-5"
@@ -314,7 +314,7 @@ export default function ClientsPage() {
                                   <button
                                     onClick={() => openEditModal(partner)}
                                     class="hover:text-accent-hover text-accent-primary transition-colors"
-                                    title="Edit client"
+                                    title="Edit supplier"
                                   >
                                     <svg
                                       class="h-5 w-5"
@@ -333,7 +333,7 @@ export default function ClientsPage() {
                                   <button
                                     onClick={() => openDeleteModal(partner)}
                                     class="text-status-error-text transition-colors hover:text-red-700"
-                                    title="Delete client"
+                                    title="Delete supplier"
                                   >
                                     <svg
                                       class="h-5 w-5"
@@ -372,7 +372,7 @@ export default function ClientsPage() {
                             <span class="font-medium text-text-primary">
                               {pagination().total}
                             </span>{' '}
-                            clients
+                            suppliers
                             {pagination().pages > 1 && (
                               <span>
                                 {' '}
@@ -423,7 +423,7 @@ export default function ClientsPage() {
         >
           <div class="w-full max-w-md rounded-lg bg-bg-surface p-6 shadow-xl">
             <h2 class="mb-4 text-xl font-bold text-text-primary">
-              {modalMode() === 'create' ? 'Create Partner' : 'Edit Partner'}
+              {modalMode() === 'create' ? 'Create Supplier' : 'Edit Supplier'}
             </h2>
 
             <form
@@ -433,7 +433,7 @@ export default function ClientsPage() {
                 {/* Partner Name */}
                 <div>
                   <label class="mb-1 block text-sm font-medium text-text-primary">
-                    Client Name *
+                    Supplier Name *
                   </label>
                   <input
                     type="text"
@@ -548,7 +548,7 @@ export default function ClientsPage() {
         >
           <div class="w-full max-w-md rounded-lg bg-bg-surface p-6 shadow-xl">
             <h2 class="mb-4 text-xl font-bold text-text-primary">
-              Delete Partner
+              Delete Supplier
             </h2>
 
             <p class="mb-6 text-text-secondary">
@@ -589,7 +589,7 @@ export default function ClientsPage() {
         </div>
       </Show>
 
-      {/* Detail Modal (Transactions/Imports) */}
+      {/* Detail Modal (Imports) */}
       <Show when={modalMode() === 'detail'}>
         <div
           class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -600,7 +600,7 @@ export default function ClientsPage() {
           <div class="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-bg-surface p-6 shadow-xl">
             <div class="mb-4 flex items-center justify-between">
               <h2 class="text-xl font-bold text-text-primary">
-                {selectedPartner()?.partnerName} - Transactions
+                {selectedPartner()?.partnerName} - Imports
               </h2>
               <button
                 onClick={closeModal}
@@ -639,7 +639,7 @@ export default function ClientsPage() {
                 when={detailData() && detailData()!.length > 0}
                 fallback={
                   <div class="py-12 text-center">
-                    <p class="text-text-secondary">No transactions found</p>
+                    <p class="text-text-secondary">No imports found</p>
                   </div>
                 }
               >
@@ -649,12 +649,12 @@ export default function ClientsPage() {
                       <div class="rounded-lg border border-border-default p-4 hover:bg-bg-hover">
                         <div class="flex items-start justify-between">
                           <div class="flex-1">
-                            {/* Transaction Details */}
+                            {/* Import Details */}
                             <div class="text-sm">
                               <p class="font-medium text-text-primary">
                                 <CopyableId
                                   id={item._id || ''}
-                                  prefix="Transaction"
+                                  prefix="Import"
                                 />
                               </p>
                               <p class="mt-1 text-text-secondary">
@@ -680,9 +680,9 @@ export default function ClientsPage() {
                                 </span>
                               </p>
                               <p class="mt-1 text-xs text-text-secondary">
-                                {item.itemsDeliveredDate
+                                {item.itemsReceivedDate
                                   ? new Date(
-                                      item.itemsDeliveredDate
+                                      item.itemsReceivedDate
                                     ).toLocaleDateString()
                                   : new Date(
                                       item.createdAt

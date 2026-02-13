@@ -3,22 +3,51 @@ import { Button } from '@/shared/ui/Button';
 import { InventoryTable } from '@/features/inventory/components/InventoryTable';
 import { InventoryFiltersBar } from '@/features/inventory/components/InventoryFiltersBar';
 import { AddItemModal } from '@/features/inventory/components/AddItemModal';
-import { getInventoryItems } from '@/features/inventory/api/inventory.api';
+import { getInventoryItemsWithPagination } from '@/features/inventory/api/inventory.api';
 import { getStorehouses } from '@/shared/api/storehouses.api';
-import {
-  getInventorySummary,
-  MOCK_ITEMS,
-} from '@/features/inventory/lib/mock-inventory';
+import { getInventorySummary } from '@/features/inventory/lib/mock-inventory';
 import type { InventoryFilters } from '@/features/inventory/types/inventory.types';
 
 export default function InventoryPage() {
   const [filters, setFilters] = createSignal<InventoryFilters>({
     status: 'all',
   });
+  const [currentPage, setCurrentPage] = createSignal(1);
+  const [paginationInfo, setPaginationInfo] = createSignal<any>(null);
 
-  const [items, { refetch }] = createResource(filters, getInventoryItems);
+  const [items, { refetch }] = createResource(
+    () => ({ filters: filters(), page: currentPage() }),
+    async ({ filters: currentFilters, page }) => {
+      const response = await getInventoryItemsWithPagination({
+        page,
+        limit: 20,
+        search: currentFilters.search,
+        status:
+          currentFilters.status !== 'all' ? currentFilters.status : undefined,
+        tags: currentFilters.tags,
+        storeHouse: currentFilters.storeHouse,
+      });
+      setPaginationInfo(response.pagination);
+      return response.items;
+    }
+  );
+
   const [storehouses] = createResource(() => getStorehouses());
   const [isModalOpen, setIsModalOpen] = createSignal(false);
+
+  // Reset to page 1 when filters change
+  const changeFilters = (newFilters: InventoryFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
+
+  // Load more (next page)
+  const loadMore = () => {
+    const pagination = paginationInfo();
+    if (pagination && currentPage() < pagination.pages) {
+      setCurrentPage(currentPage() + 1);
+    }
+  };
 
   const summary = () => {
     const currentItems = items();
@@ -160,9 +189,10 @@ export default function InventoryPage() {
       {/* Filters */}
       <InventoryFiltersBar
         filters={filters()}
-        onFiltersChange={setFilters}
-        totalItems={MOCK_ITEMS.length}
+        onFiltersChange={changeFilters}
+        totalItems={paginationInfo()?.total ?? 0}
         filteredCount={items()?.length ?? 0}
+        storehouses={storehouses() ?? []}
       />
 
       {/* Table */}
@@ -178,7 +208,41 @@ export default function InventoryPage() {
         }
       >
         <Show when={items()}>
-          <InventoryTable items={items()!} onRefresh={refetch} />
+          <div class="rounded-lg border border-border-default bg-bg-surface shadow-sm">
+            <InventoryTable items={items()!} onRefresh={refetch} />
+
+            {/* Pagination UI */}
+            <Show when={paginationInfo()}>
+              {(pagination) => (
+                <div class="flex flex-col gap-2 border-t border-border-default px-6 py-4">
+                  <div class="flex items-center justify-between">
+                    <div class="text-sm text-text-secondary">
+                      Showing{' '}
+                      <span class="font-medium text-text-primary">
+                        {items()?.length ?? 0}
+                      </span>{' '}
+                      of{' '}
+                      <span class="font-medium text-text-primary">
+                        {pagination().total}
+                      </span>{' '}
+                      items
+                      {pagination().pages > 1 && (
+                        <span>
+                          {' '}
+                          (Page {pagination().page} of {pagination().pages})
+                        </span>
+                      )}
+                    </div>
+                    <Show when={pagination().page < pagination().pages}>
+                      <Button onClick={loadMore} disabled={items.loading}>
+                        {items.loading ? 'Loading...' : 'Load More'}
+                      </Button>
+                    </Show>
+                  </div>
+                </div>
+              )}
+            </Show>
+          </div>
         </Show>
       </Show>
 

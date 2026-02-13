@@ -3,7 +3,13 @@ import { useNavigate } from '@solidjs/router';
 import { Card, CardHeader, CardBody, Input, Button } from '@/shared/ui';
 import { signup } from '../api/auth.api';
 import type { AppError } from '@/shared/types/api.types';
-import { setUser, setStatus, user, status, isInitialized } from '../store/session.store';
+import {
+  setUser,
+  setStatus,
+  user,
+  status,
+  isInitialized,
+} from '../store/session.store';
 import { notificationStore } from '@/shared/stores/notification.store';
 import { getErrorMessage } from '@/shared/lib/error-messages';
 

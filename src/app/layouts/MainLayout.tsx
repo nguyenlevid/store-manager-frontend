@@ -84,6 +84,13 @@ export function MainLayout(props: MainLayoutProps) {
                 >
                   Clients
                 </A>
+                <A
+                  href="/suppliers"
+                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
+                >
+                  Suppliers
+                </A>
               </div>
             </div>
 
@@ -295,6 +302,14 @@ export function MainLayout(props: MainLayoutProps) {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Clients
+                </A>
+                <A
+                  href="/suppliers"
+                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Suppliers
                 </A>
               </div>
             </div>
