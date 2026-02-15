@@ -11,7 +11,7 @@ import { apiClient } from '@/shared/lib/api-client';
 describe('API Client - Single-Flight Refresh', () => {
   beforeEach(() => {
     // Reset fetch mock before each test
-    global.fetch = vi.fn();
+    globalThis.fetch = vi.fn();
   });
 
   afterEach(() => {
@@ -22,7 +22,7 @@ describe('API Client - Single-Flight Refresh', () => {
     let callCount = 0;
 
     // Mock fetch behavior
-    global.fetch = vi.fn((url: RequestInfo | URL) => {
+    globalThis.fetch = vi.fn((url: RequestInfo | URL) => {
       callCount++;
 
       // Mock refresh endpoint
@@ -61,8 +61,8 @@ describe('API Client - Single-Flight Refresh', () => {
     await Promise.all(requests);
 
     // Count refresh calls
-    const refreshCalls = (global.fetch as any).mock.calls.filter(
-      (call: any[]) => call[0].includes('/auth/refresh')
+    const refreshCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (call: unknown[]) => (call[0] as string).includes('/auth/refresh')
     );
 
     // Should only call refresh once despite multiple 401s
@@ -72,7 +72,7 @@ describe('API Client - Single-Flight Refresh', () => {
   it('should retry original request after successful refresh', async () => {
     let isFirstCall = true;
 
-    global.fetch = vi.fn((url: RequestInfo | URL) => {
+    globalThis.fetch = vi.fn((url: RequestInfo | URL) => {
       // Mock refresh endpoint
       if (url.toString().includes('/auth/refresh')) {
         return Promise.resolve({
@@ -105,7 +105,7 @@ describe('API Client - Single-Flight Refresh', () => {
   });
 
   it('should fail all requests if refresh fails', async () => {
-    global.fetch = vi.fn((url: RequestInfo | URL) => {
+    globalThis.fetch = vi.fn((url: RequestInfo | URL) => {
       // Mock refresh endpoint to fail
       if (url.toString().includes('/auth/refresh')) {
         return Promise.resolve({

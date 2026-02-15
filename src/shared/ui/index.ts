@@ -12,3 +12,10 @@ export { Alert } from './Alert';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
 export { CopyableId } from './CopyableId';
+export { ReceiptPrint } from './ReceiptPrint';
+export type {
+  ReceiptItem,
+  ReceiptTransaction,
+  ReceiptBusinessInfo,
+  ReceiptPrintProps,
+} from './ReceiptPrint';

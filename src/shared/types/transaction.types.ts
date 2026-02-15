@@ -10,7 +10,8 @@ export interface TransactionItem {
   itemId: string;
   itemName?: string; // Populated field
   quantity: number;
-  unitPrice: number;
+  listedPrice: number; // Original catalog price at time of transaction
+  unitPrice: number; // Actual selling price (may include discounts)
   totalPrice: number;
 }
 
@@ -35,19 +36,29 @@ export interface TransactionFormData {
   items: Array<{
     itemId: string;
     quantity: number;
-    unitPrice: number;
+    unitPrice: number; // Actual selling price (listedPrice is fetched from DB on backend)
   }>;
   status?: TransactionStatus;
 }
 
 export interface TransactionFilters {
+  // Text search (client name, email, id)
   search?: string;
+  // Basic filters
   status?: TransactionStatus | 'all';
   clientId?: string;
+  // Date range filters
+  dateFrom?: string; // ISO date string
+  dateTo?: string; // ISO date string
+  // Price range filters
+  priceMin?: number;
+  priceMax?: number;
+  // Pagination
   page?: number;
   limit?: number;
+  // Sorting
   sortBy?: string;
-  order?: 'asc' | 'desc';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface TransactionPaginationResponse {

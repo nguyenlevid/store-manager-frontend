@@ -7,6 +7,9 @@
 // Auth API
 export * from '@/features/auth/api/auth.api';
 
+// Business API
+export * from './business.api';
+
 // Inventory API
 export * from '@/features/inventory/api/inventory.api';
 

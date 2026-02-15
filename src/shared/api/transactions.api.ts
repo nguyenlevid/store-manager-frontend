@@ -28,6 +28,7 @@ interface BackendTransaction {
   item: Array<{
     itemId: string | { _id: string; name: string };
     quantity: number;
+    listedPrice: number;
     unitPrice: number;
     totalPrice: number;
   }>;
@@ -83,6 +84,7 @@ function mapBackendTransaction(transaction: BackendTransaction): Transaction {
       itemId,
       itemName,
       quantity: item.quantity,
+      listedPrice: item.listedPrice ?? item.unitPrice, // Fallback for old transactions without listedPrice
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
     };
@@ -106,33 +108,69 @@ function mapBackendTransaction(transaction: BackendTransaction): Transaction {
 }
 
 /**
+ * Build query params from TransactionFilters
+ * Reusable helper for both getTransactions and getTransactionsWithPagination
+ */
+function buildTransactionQueryParams(filters?: TransactionFilters): string {
+  if (!filters) return '';
+
+  const params = new URLSearchParams();
+
+  // Basic filters
+  if (filters.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+  if (filters.clientId) {
+    params.append('clientId', filters.clientId);
+  }
+
+  // Date range filters
+  if (filters.dateFrom) {
+    params.append('dateFrom', filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    params.append('dateTo', filters.dateTo);
+  }
+
+  // Price range filters
+  if (filters.priceMin !== undefined) {
+    params.append('priceMin', filters.priceMin.toString());
+  }
+  if (filters.priceMax !== undefined) {
+    params.append('priceMax', filters.priceMax.toString());
+  }
+
+  // Text search (for client name/email - may need backend aggregation)
+  if (filters.search) {
+    params.append('search', filters.search);
+  }
+
+  // Pagination
+  if (filters.page) {
+    params.append('page', filters.page.toString());
+  }
+  if (filters.limit) {
+    params.append('limit', filters.limit.toString());
+  }
+
+  // Sorting
+  if (filters.sortBy) {
+    params.append('sortBy', filters.sortBy);
+  }
+  if (filters.sortOrder) {
+    params.append('sortOrder', filters.sortOrder);
+  }
+
+  return params.toString();
+}
+
+/**
  * Get all transactions with optional filters
  */
 export async function getTransactions(
   filters?: TransactionFilters
 ): Promise<Transaction[]> {
-  const params = new URLSearchParams();
-
-  if (filters?.status && filters.status !== 'all') {
-    params.append('status', filters.status);
-  }
-  if (filters?.clientId) {
-    params.append('clientId', filters.clientId);
-  }
-  if (filters?.page) {
-    params.append('page', filters.page.toString());
-  }
-  if (filters?.limit) {
-    params.append('limit', filters.limit.toString());
-  }
-  if (filters?.sortBy) {
-    params.append('sortBy', filters.sortBy);
-  }
-  if (filters?.order) {
-    params.append('order', filters.order);
-  }
-
-  const queryString = params.toString();
+  const queryString = buildTransactionQueryParams(filters);
   const endpoint = queryString ? `/transaction?${queryString}` : '/transaction';
 
   const response = await apiClient.get<{
@@ -147,11 +185,13 @@ export async function getTransactions(
     : [];
 
   // Client-side search filter (applied after pagination)
+  // NOTE: Once backend supports text search via aggregation, remove this
   if (filters?.search) {
     const search = filters.search.toLowerCase();
     transactions = transactions.filter(
       (txn) =>
         txn.clientName?.toLowerCase().includes(search) ||
+        txn.clientEmail?.toLowerCase().includes(search) ||
         txn.id.toLowerCase().includes(search)
     );
   }
@@ -165,28 +205,7 @@ export async function getTransactions(
 export async function getTransactionsWithPagination(
   filters?: TransactionFilters
 ): Promise<{ transactions: Transaction[]; pagination: any }> {
-  const params = new URLSearchParams();
-
-  if (filters?.status && filters.status !== 'all') {
-    params.append('status', filters.status);
-  }
-  if (filters?.clientId) {
-    params.append('clientId', filters.clientId);
-  }
-  if (filters?.page) {
-    params.append('page', filters.page.toString());
-  }
-  if (filters?.limit) {
-    params.append('limit', filters.limit.toString());
-  }
-  if (filters?.sortBy) {
-    params.append('sortBy', filters.sortBy);
-  }
-  if (filters?.order) {
-    params.append('order', filters.order);
-  }
-
-  const queryString = params.toString();
+  const queryString = buildTransactionQueryParams(filters);
   const endpoint = queryString ? `/transaction?${queryString}` : '/transaction';
 
   const response = await apiClient.get<{
@@ -195,9 +214,21 @@ export async function getTransactionsWithPagination(
   }>(endpoint);
 
   const backendTransactions = response?.items || [];
-  const transactions = Array.isArray(backendTransactions)
+  let transactions = Array.isArray(backendTransactions)
     ? backendTransactions.map(mapBackendTransaction)
     : [];
+
+  // Client-side search filter (applied after pagination)
+  // NOTE: Once backend supports text search via aggregation, remove this
+  if (filters?.search) {
+    const search = filters.search.toLowerCase();
+    transactions = transactions.filter(
+      (txn) =>
+        txn.clientName?.toLowerCase().includes(search) ||
+        txn.clientEmail?.toLowerCase().includes(search) ||
+        txn.id.toLowerCase().includes(search)
+    );
+  }
 
   return {
     transactions,
@@ -235,7 +266,7 @@ export async function getTransactionById(
 export async function createTransaction(
   data: TransactionFormData
 ): Promise<Transaction> {
-  // Calculate totals
+  // Calculate totals (listedPrice is fetched from DB on backend)
   const items = data.items.map((item) => ({
     itemId: item.itemId,
     quantity: item.quantity,
@@ -270,6 +301,7 @@ export async function updateTransaction(
   let payload: any = { ...updates };
 
   if (updates.items) {
+    // listedPrice is fetched from DB on backend
     const items = updates.items.map((item) => ({
       itemId: item.itemId,
       quantity: item.quantity,

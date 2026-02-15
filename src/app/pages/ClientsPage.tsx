@@ -90,7 +90,7 @@ export default function ClientsPage() {
     setSelectedPartner(partner);
     setFormData({
       partnerName: partner.partnerName,
-      partnerType: partner.partnerType,
+      partnerType: partner.partnerType as 'client',
       phoneNumber: partner.phoneNumber || '',
       email: partner.email || '',
       address: partner.address || '',

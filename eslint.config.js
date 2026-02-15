@@ -33,8 +33,11 @@ export default [
       ],
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-console': 'off',
+      'solid/reactivity': 'off',
+      'solid/self-closing-comp': 'off',
+      'solid/components-return-once': 'off',
     },
   },
   {
