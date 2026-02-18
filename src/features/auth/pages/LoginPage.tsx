@@ -12,7 +12,11 @@ export default function LoginPage() {
   // Redirect if already authenticated (only after session is initialized)
   createEffect(() => {
     if (isInitialized() && status() === 'authenticated' && user()) {
-      navigate('/', { replace: true });
+      const redirectParam = searchParams['redirect'];
+      const redirect = Array.isArray(redirectParam)
+        ? redirectParam[0]
+        : redirectParam || '/';
+      navigate(redirect || '/', { replace: true });
     }
   });
 

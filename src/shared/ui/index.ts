@@ -13,6 +13,7 @@ export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
 export { CopyableId } from './CopyableId';
 export { ReceiptPrint } from './ReceiptPrint';
+export { FloatingActionButton } from './FloatingActionButton';
 export type {
   ReceiptItem,
   ReceiptTransaction,

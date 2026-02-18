@@ -13,9 +13,15 @@ import {
   getItemUnits,
 } from '../api/inventory.api';
 import { getStorehouses } from '@/shared/api/storehouses.api';
+import { getBusiness } from '@/shared/stores/business.store';
+import { formatCurrency as sharedFormatCurrency } from '@/shared/lib/format';
 import type { Item } from '../types/inventory.types';
 import { notificationStore } from '@/shared/stores/notification.store';
 import type { Storehouse } from '@/shared/types/storehouse.types';
+import { BarcodeLabel } from './BarcodeLabel';
+import { PrintLabelsModal } from './PrintLabelsModal';
+import { TransferStockModal } from './TransferStockModal';
+import type { CodeType } from '@/shared/lib/barcode-utils';
 
 interface ViewItemDetailsModalProps {
   item: Item;
@@ -29,6 +35,14 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
 ) => {
   // Edit mode toggle
   const [isEditMode, setIsEditMode] = createSignal(false);
+
+  // Barcode / QR preview
+  const [previewCodeType, setPreviewCodeType] = createSignal<CodeType>('qr');
+  const [showPrintModal, setShowPrintModal] = createSignal(false);
+  const [showTransferModal, setShowTransferModal] = createSignal(false);
+
+  // Fetch business info for label branding
+  const business = getBusiness;
 
   // Form fields
   const [name, setName] = createSignal('');
@@ -83,7 +97,7 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
       setUnitInput(item.unit);
       setTags(item.tags || []);
       setStoreHouse(item.storeHouse.id);
-      setReorderLevel(item.reorderLevel?.toString() || '');
+      setReorderLevel(item.lowStockAt?.toString() || '');
       setIsEditMode(false);
       setError(null);
     }
@@ -273,7 +287,7 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
       setUnitInput(item.unit);
       setTags(item.tags || []);
       setStoreHouse(item.storeHouse.id);
-      setReorderLevel(item.reorderLevel?.toString() || '');
+      setReorderLevel(item.lowStockAt?.toString() || '');
       setIsEditMode(false);
       setError(null);
     } else {
@@ -281,12 +295,8 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    sharedFormatCurrency(amount, business()?.currency);
 
   return (
     <Show when={props.isOpen}>
@@ -389,13 +399,13 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
                         {props.item.quantity} {props.item.unit}
                       </p>
                     </div>
-                    <Show when={props.item.reorderLevel}>
+                    <Show when={props.item.lowStockAt}>
                       <div>
                         <label class="block text-sm font-medium text-text-secondary">
-                          Reorder Level
+                          Low Stock Alert
                         </label>
                         <p class="mt-1 text-base text-text-primary">
-                          {props.item.reorderLevel}
+                          {props.item.lowStockAt}
                         </p>
                       </div>
                     </Show>
@@ -440,6 +450,49 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
                       </div>
                     </div>
                   </Show>
+
+                  {/* Barcode / QR Preview */}
+                  <div>
+                    <div class="flex items-center justify-between">
+                      <label class="block text-sm font-medium text-text-secondary">
+                        Item Code
+                      </label>
+                      <div class="flex rounded-lg border border-border-default">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewCodeType('qr')}
+                          class={`px-3 py-1 text-xs font-medium transition-colors ${
+                            previewCodeType() === 'qr'
+                              ? 'bg-accent-primary text-white'
+                              : 'text-text-secondary hover:bg-bg-hover'
+                          } rounded-l-lg`}
+                        >
+                          QR
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewCodeType('barcode')}
+                          class={`px-3 py-1 text-xs font-medium transition-colors ${
+                            previewCodeType() === 'barcode'
+                              ? 'bg-accent-primary text-white'
+                              : 'text-text-secondary hover:bg-bg-hover'
+                          } rounded-r-lg`}
+                        >
+                          Barcode
+                        </button>
+                      </div>
+                    </div>
+                    <div class="mt-2 flex justify-center rounded-lg border border-border-subtle bg-white p-3">
+                      <BarcodeLabel
+                        itemId={props.item.id}
+                        itemName={props.item.name}
+                        unit={props.item.unit}
+                        storehouse={props.item.storeHouse?.name}
+                        codeType={previewCodeType()}
+                        size="md"
+                      />
+                    </div>
+                  </div>
                 </div>
               </Show>
 
@@ -752,6 +805,44 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
                   <Button variant="outline" onClick={() => props.onClose()}>
                     Close
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTransferModal(true)}
+                  >
+                    <svg
+                      class="mr-1.5 h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width={2}
+                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                      />
+                    </svg>
+                    Transfer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPrintModal(true)}
+                  >
+                    <svg
+                      class="mr-1.5 h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width={2}
+                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                      />
+                    </svg>
+                    Print Label
+                  </Button>
                   <Button variant="primary" onClick={() => setIsEditMode(true)}>
                     Edit Item
                   </Button>
@@ -776,6 +867,31 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
           </div>
         </div>
       </div>
+
+      {/* Print Labels Modal */}
+      <PrintLabelsModal
+        isOpen={showPrintModal()}
+        onClose={() => setShowPrintModal(false)}
+        items={[
+          {
+            id: props.item.id,
+            name: props.item.name,
+            unit: props.item.unit,
+            storehouse: props.item.storeHouse?.name,
+            quantity: props.item.quantity,
+            copies: 1,
+          },
+        ]}
+        businessName={business()?.name}
+      />
+
+      {/* Transfer Stock Modal */}
+      <TransferStockModal
+        item={props.item}
+        isOpen={showTransferModal()}
+        onClose={() => setShowTransferModal(false)}
+        onSuccess={props.onSuccess}
+      />
     </Show>
   );
 };

@@ -1,5 +1,13 @@
-import { createSignal, createResource, Show, For, Index } from 'solid-js';
+import {
+  createSignal,
+  createResource,
+  Show,
+  For,
+  Index,
+  createEffect,
+} from 'solid-js';
 import { createStore } from 'solid-js/store';
+import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardBody, CopyableId } from '@/shared/ui';
 import {
@@ -12,10 +20,14 @@ import {
   completeTransaction,
   cancelTransaction,
   markTransactionPending,
-  getCurrentBusiness,
 } from '@/shared/api';
 import { getClients, getInventoryItems } from '@/shared/api';
 import { apiClient } from '@/shared/lib/api-client';
+import {
+  formatCurrency as sharedFormatCurrency,
+  formatDate as sharedFormatDate,
+} from '@/shared/lib/format';
+import { getBusiness } from '@/shared/stores/business.store';
 import type { Transaction } from '@/shared/types/transaction.types';
 
 type ModalMode =
@@ -55,6 +67,7 @@ interface AdvancedFilters {
 }
 
 export default function OrdersPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = createSignal<
     'all' | 'pending' | 'completed' | 'cancelled'
   >('all');
@@ -99,7 +112,7 @@ export default function OrdersPage() {
   // Resources
   const [clients] = createResource(() => getClients());
   const [items] = createResource(() => getInventoryItems());
-  const [business] = createResource(() => getCurrentBusiness());
+  const business = getBusiness;
 
   // Fetch transactions with all filters (server-side filtering)
   const [transactions, { refetch }] = createResource(
@@ -643,16 +656,12 @@ export default function OrdersPage() {
     clearAdvancedFilters();
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    sharedFormatCurrency(amount, business()?.currency);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString();
+    return sharedFormatDate(dateString, business()?.timezone);
   };
 
   // Modal handlers
@@ -694,6 +703,10 @@ export default function OrdersPage() {
     setSelectedTransaction(null);
     setError(null);
     setConfirmAction(null);
+    // Clear URL params when closing modal
+    if (searchParams['id']) {
+      setSearchParams({ id: undefined });
+    }
   };
 
   // Show confirmation modal
@@ -738,10 +751,7 @@ export default function OrdersPage() {
 
   // CRUD Operations
   const handleCreate = async () => {
-    if (!clientId()) {
-      setError('Client is required');
-      return;
-    }
+    // clientId is optional - if not provided, backend uses walk-in customer
 
     if (formItems.length === 0 || formItems.some((i) => !i.itemId)) {
       setError('At least one valid item is required');
@@ -753,7 +763,7 @@ export default function OrdersPage() {
 
     try {
       await createTransaction({
-        clientId: clientId(),
+        clientId: clientId() || undefined, // Send undefined if empty (walk-in)
         items: formItems.map((item) => ({
           itemId: item.itemId,
           quantity: parseInt(item.quantity) || 0,
@@ -772,10 +782,7 @@ export default function OrdersPage() {
   const handleUpdate = async () => {
     if (!selectedTransaction()) return;
 
-    if (!clientId()) {
-      setError('Client is required');
-      return;
-    }
+    // clientId is optional - if not provided, backend uses walk-in customer
 
     if (formItems.length === 0 || formItems.some((i) => !i.itemId)) {
       setError('At least one valid item is required');
@@ -787,7 +794,7 @@ export default function OrdersPage() {
 
     try {
       await updateTransaction(selectedTransaction()!.id, {
-        clientId: clientId(),
+        clientId: clientId() || undefined, // Send undefined if empty (walk-in)
         items: formItems.map((item) => ({
           itemId: item.itemId,
           quantity: parseInt(item.quantity) || 0,
@@ -937,6 +944,27 @@ export default function OrdersPage() {
         return 'bg-bg-subtle text-text-secondary';
     }
   };
+
+  // Handle action query param (from FAB - use createEffect to react to changes)
+  createEffect(() => {
+    if (searchParams['action'] === 'create') {
+      openCreateModal();
+      // Clear the query param
+      setSearchParams({ action: undefined });
+    }
+  });
+
+  // Handle id query param (from dashboard recent orders)
+  createEffect(() => {
+    const orderId = searchParams['id'];
+    if (orderId && transactions()) {
+      const order = transactions()?.find((t) => t.id === orderId);
+      if (order) {
+        setSelectedTransaction(order);
+        setModalMode('detail');
+      }
+    }
+  });
 
   return (
     <div class="space-y-6 py-8">
@@ -1572,16 +1600,15 @@ export default function OrdersPage() {
               {/* Client Selection */}
               <div>
                 <label class="mb-2 block text-sm font-medium text-text-primary">
-                  Client *
+                  Client
                 </label>
                 <select
                   value={clientId()}
                   onInput={(e) => setClientId(e.currentTarget.value)}
-                  required
                   class="w-full rounded-lg border border-border-default bg-bg-surface px-4 py-2 text-text-primary focus:border-accent-primary focus:outline-none"
                 >
-                  <option value="">Select a client...</option>
-                  <For each={clients()}>
+                  <option value="">Walk-in Customer</option>
+                  <For each={clients()?.filter((c) => !c.isWalkIn)}>
                     {(client) => (
                       <option value={client.id}>{client.partnerName}</option>
                     )}
@@ -1914,10 +1941,11 @@ export default function OrdersPage() {
                         </p>
                         <p class="text-sm text-text-secondary">
                           Sell Price: {formatCurrency(item.unitPrice)}
+                          {/* Discount */}
                           <Show
                             when={
                               item.listedPrice &&
-                              item.listedPrice !== item.unitPrice
+                              item.unitPrice < item.listedPrice
                             }
                           >
                             <span class="ml-2 text-status-success-text">
@@ -1928,22 +1956,53 @@ export default function OrdersPage() {
                               % off)
                             </span>
                           </Show>
+                          {/* Markup */}
+                          <Show
+                            when={
+                              item.listedPrice &&
+                              item.unitPrice > item.listedPrice
+                            }
+                          >
+                            <span class="ml-2 text-orange-500">
+                              (+
+                              {Math.round(
+                                (item.unitPrice / item.listedPrice - 1) * 100
+                              )}
+                              % markup)
+                            </span>
+                          </Show>
                         </p>
                       </div>
                       <div class="text-right">
                         <p class="font-semibold text-text-primary">
                           {formatCurrency(item.totalPrice)}
                         </p>
+                        {/* Savings */}
                         <Show
                           when={
                             item.listedPrice &&
-                            item.listedPrice !== item.unitPrice
+                            item.unitPrice < item.listedPrice
                           }
                         >
                           <p class="text-xs text-status-success-text">
                             Saved{' '}
                             {formatCurrency(
                               (item.listedPrice - item.unitPrice) *
+                                item.quantity
+                            )}
+                          </p>
+                        </Show>
+                        {/* Extra charged */}
+                        <Show
+                          when={
+                            item.listedPrice &&
+                            item.unitPrice > item.listedPrice
+                          }
+                        >
+                          <p class="text-xs text-orange-500">
+                            +
+                            {formatCurrency(
+                              (item.unitPrice - item.listedPrice) *
                                 item.quantity
                             )}
                           </p>

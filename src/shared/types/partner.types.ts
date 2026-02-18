@@ -14,6 +14,7 @@ export interface Partner {
   email?: string;
   address?: string;
   worksWithBusiness: string;
+  isWalkIn?: boolean;
   createdAt: string;
   updatedAt: string;
 }

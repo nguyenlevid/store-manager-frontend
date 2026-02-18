@@ -1,19 +1,24 @@
-import { createSignal, createResource, Show } from 'solid-js';
+import { createSignal, createResource, Show, createEffect } from 'solid-js';
+import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
 import { InventoryTable } from '@/features/inventory/components/InventoryTable';
 import { InventoryFiltersBar } from '@/features/inventory/components/InventoryFiltersBar';
 import { AddItemModal } from '@/features/inventory/components/AddItemModal';
 import { getInventoryItemsWithPagination } from '@/features/inventory/api/inventory.api';
 import { getStorehouses } from '@/shared/api/storehouses.api';
+import { getBusiness } from '@/shared/stores/business.store';
+import { formatCurrency as sharedFormatCurrency } from '@/shared/lib/format';
 import { getInventorySummary } from '@/features/inventory/lib/mock-inventory';
 import type { InventoryFilters } from '@/features/inventory/types/inventory.types';
 
 export default function InventoryPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = createSignal<InventoryFilters>({
     status: 'all',
   });
   const [currentPage, setCurrentPage] = createSignal(1);
   const [paginationInfo, setPaginationInfo] = createSignal<any>(null);
+  const business = getBusiness;
 
   const [items, { refetch }] = createResource(
     () => ({ filters: filters(), page: currentPage() }),
@@ -35,6 +40,30 @@ export default function InventoryPage() {
   const [storehouses] = createResource(() => getStorehouses());
   const [isModalOpen, setIsModalOpen] = createSignal(false);
 
+  // Handle action query param (from FAB - use createEffect to react to changes)
+  createEffect(() => {
+    if (searchParams['action'] === 'create') {
+      setIsModalOpen(true);
+      setSearchParams({ action: undefined });
+    }
+  });
+
+  // Handle search query param (from dashboard low stock alerts)
+  createEffect(() => {
+    const searchTerm = searchParams['search'];
+    if (searchTerm) {
+      const searchValue = Array.isArray(searchTerm)
+        ? searchTerm[0]
+        : searchTerm;
+      setFilters((prev) => ({
+        ...prev,
+        search: searchValue,
+      }));
+      // Clear the search param from URL after applying to filters
+      setSearchParams({ search: undefined });
+    }
+  });
+
   // Reset to page 1 when filters change
   const changeFilters = (newFilters: InventoryFilters) => {
     setFilters(newFilters);
@@ -55,14 +84,8 @@ export default function InventoryPage() {
     return getInventorySummary(currentItems);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    sharedFormatCurrency(amount, business()?.currency);
 
   return (
     <div class="space-y-6 py-8">
@@ -95,7 +118,7 @@ export default function InventoryPage() {
       {/* Summary Cards */}
       <Show when={summary()}>
         {(stats) => (
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Total SKUs */}
             <div class="rounded-lg border border-border-default bg-bg-surface p-5 shadow-sm">
               <div class="flex items-center justify-between">
@@ -177,6 +200,35 @@ export default function InventoryPage() {
                       stroke-linejoin="round"
                       stroke-width={2}
                       d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Low Stock */}
+            <div class="rounded-lg border border-border-default bg-status-warning-bg p-5 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium text-status-warning-text">
+                    Low Stock
+                  </p>
+                  <p class="mt-2 text-3xl font-bold text-status-warning-text">
+                    {stats().lowStockCount}
+                  </p>
+                </div>
+                <div class="rounded-full bg-accent-warning-subtle p-3">
+                  <svg
+                    class="h-6 w-6 text-accent-warning"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                     />
                   </svg>
                 </div>

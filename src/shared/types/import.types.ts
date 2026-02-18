@@ -44,10 +44,18 @@ export interface ImportFilters {
   search?: string;
   status?: ImportStatus | 'all';
   supplierId?: string;
+  // Date range filters
+  dateFrom?: string;
+  dateTo?: string;
+  // Price range filters
+  priceMin?: number;
+  priceMax?: number;
+  // Pagination
   page?: number;
   limit?: number;
-  sortBy?: string;
-  order?: 'asc' | 'desc';
+  // Sorting
+  sortBy?: 'createdAt' | 'totalPrice' | 'supplierName';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface ImportPaginationResponse {

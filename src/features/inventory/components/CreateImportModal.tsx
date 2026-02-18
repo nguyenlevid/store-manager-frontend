@@ -10,6 +10,8 @@ import type { Item } from '../types/inventory.types';
 import { createImport } from '@/shared/api/imports.api';
 import { getPartners } from '@/shared/api/partners.api';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getBusiness } from '@/shared/stores/business.store';
+import { formatCurrency as sharedFormatCurrency } from '@/shared/lib/format';
 import type { Partner } from '@/shared/types/partner.types';
 
 interface CreateImportModalProps {
@@ -103,12 +105,9 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
     props.onClose();
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
+  const business = getBusiness;
+  const formatCurrency = (amount: number) =>
+    sharedFormatCurrency(amount, business()?.currency);
 
   return (
     <Show when={props.isOpen}>

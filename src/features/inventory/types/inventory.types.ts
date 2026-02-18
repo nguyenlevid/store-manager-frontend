@@ -18,7 +18,7 @@ export const ItemSchema = z.object({
     id: z.string(),
     name: z.string(),
   }),
-  reorderLevel: z.number().optional(), // Alert threshold
+  lowStockAt: z.number().default(10), // Alert threshold
   createdAt: z.string(),
   updatedAt: z.string(),
 });

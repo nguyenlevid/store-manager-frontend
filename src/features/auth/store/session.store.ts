@@ -1,4 +1,5 @@
 import { createSignal } from 'solid-js';
+import { fetchBusiness } from '@/shared/stores/business.store';
 import type { User, SessionStatus } from '../types/auth.types';
 import type { SignupRequest } from '../types/auth.types';
 import * as authApi from '../api/auth.api';
@@ -48,6 +49,8 @@ export async function initSession(): Promise<void> {
     const currentUser = await authApi.getCurrentUser();
     setUser(currentUser);
     setStatus('authenticated');
+    // Load business data into the shared store
+    fetchBusiness();
   } catch {
     // Only truly unauthenticated if refresh failed or no refresh cookie
     setUser(null);
@@ -73,6 +76,8 @@ export async function loginUser(
     setUser(response.user);
     setAccessToken(response.accessToken);
     setStatus('authenticated');
+    // Load business data into the shared store
+    fetchBusiness(true);
     return { success: true };
   } catch (err) {
     const appError = normalizeError(err);

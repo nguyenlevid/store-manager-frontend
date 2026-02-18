@@ -32,7 +32,7 @@ export interface Transaction {
 }
 
 export interface TransactionFormData {
-  clientId: string;
+  clientId?: string; // Optional - if not provided, uses walk-in customer
   items: Array<{
     itemId: string;
     quantity: number;

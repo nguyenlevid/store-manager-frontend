@@ -111,7 +111,7 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
         <div class="flex items-center gap-2">
           <span class="text-sm font-medium text-text-primary">Stock:</span>
           <div class="flex gap-2">
-            <For each={['all', 'out-of-stock'] as const}>
+            <For each={['all', 'low-stock', 'out-of-stock'] as const}>
               {(status) => (
                 <button
                   type="button"
@@ -122,7 +122,11 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
                       : 'border-border-default bg-bg-surface text-text-primary hover:bg-bg-hover'
                   }`}
                 >
-                  {status === 'all' ? 'All' : 'Out of Stock'}
+                  {status === 'all'
+                    ? 'All'
+                    : status === 'low-stock'
+                      ? 'Low Stock'
+                      : 'Out of Stock'}
                 </button>
               )}
             </For>

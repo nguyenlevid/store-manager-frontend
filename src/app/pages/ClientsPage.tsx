@@ -1,4 +1,12 @@
-import { createSignal, createResource, Show, For } from 'solid-js';
+import {
+  createSignal,
+  createResource,
+  Show,
+  For,
+  createMemo,
+  createEffect,
+} from 'solid-js';
+import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardBody, CopyableId } from '@/shared/ui';
 import {
@@ -8,6 +16,7 @@ import {
   deletePartner,
   getPartnerTransactions,
 } from '@/shared/api';
+import { getBusiness } from '@/shared/stores/business.store';
 import type { Partner } from '@/shared/types/partner.types';
 
 type ModalMode = 'create' | 'edit' | 'delete' | 'detail' | null;
@@ -20,7 +29,16 @@ interface FormData {
   address: string;
 }
 
+interface DetailFilters {
+  dateFrom: string;
+  dateTo: string;
+  priceMin: string;
+  priceMax: string;
+  status: string;
+}
+
 export default function ClientsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = createSignal('');
   const [currentPage, setCurrentPage] = createSignal(1);
   const [paginationInfo, setPaginationInfo] = createSignal<any>(null);
@@ -43,6 +61,252 @@ export default function ClientsPage() {
   // Partner details (transactions)
   const [detailData, setDetailData] = createSignal<any[] | null>(null);
   const [loadingDetails, setLoadingDetails] = createSignal(false);
+
+  // Detail modal filters
+  const [detailFilters, setDetailFilters] = createSignal<DetailFilters>({
+    dateFrom: '',
+    dateTo: '',
+    priceMin: '',
+    priceMax: '',
+    status: '',
+  });
+  const [showDetailFilters, setShowDetailFilters] = createSignal(false);
+
+  // Business info for printing
+  const business = getBusiness;
+
+  // Filtered detail data (client-side filtering)
+  const filteredDetailData = createMemo(() => {
+    const data = detailData();
+    if (!data) return [];
+
+    const filters = detailFilters();
+    return data.filter((item: any) => {
+      // Date filter
+      const itemDate = new Date(item.itemsDeliveredDate || item.createdAt);
+      if (filters.dateFrom) {
+        const fromDate = new Date(filters.dateFrom);
+        if (itemDate < fromDate) return false;
+      }
+      if (filters.dateTo) {
+        const toDate = new Date(filters.dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (itemDate > toDate) return false;
+      }
+
+      // Price filter
+      const price = item.totalPrice || 0;
+      if (filters.priceMin) {
+        const min = parseFloat(filters.priceMin);
+        if (!isNaN(min) && price < min) return false;
+      }
+      if (filters.priceMax) {
+        const max = parseFloat(filters.priceMax);
+        if (!isNaN(max) && price > max) return false;
+      }
+
+      // Status filter
+      if (filters.status && item.status !== filters.status) return false;
+
+      return true;
+    });
+  });
+
+  // Print handler for client transactions
+  const handlePrintTransactions = () => {
+    const transactions = filteredDetailData();
+    if (transactions.length === 0) return;
+
+    const partner = selectedPartner();
+    const businessInfo = business();
+    const businessName = businessInfo?.name || 'Store Manager';
+    const businessAddress = businessInfo?.address || '';
+    const businessPhone = businessInfo?.phoneNumber || '';
+
+    const totalAmount = transactions.reduce(
+      (sum: number, t: any) => sum + (t.totalPrice || 0),
+      0
+    );
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const transactionsHtml = transactions
+      .map(
+        (t: any) => `
+        <div class="transaction-section">
+          <div class="transaction-header">
+            <div>
+              <span class="transaction-id">#${(t._id || '').slice(-8).toUpperCase()}</span>
+              <span class="transaction-date">${new Date(t.itemsDeliveredDate || t.createdAt).toLocaleDateString()}</span>
+            </div>
+            <span class="status-${t.status}">${t.status || 'N/A'}</span>
+          </div>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th class="center">Qty</th>
+                <th class="right">Unit Price</th>
+                <th class="right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(t.item || [])
+                .map(
+                  (item: any) => `
+                <tr>
+                  <td>${item.itemId?.name || 'Item'}</td>
+                  <td class="center">${item.quantity}</td>
+                  <td class="right">$${(item.unitPrice || 0).toFixed(2)}</td>
+                  <td class="right">$${(item.totalPrice || 0).toFixed(2)}</td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+          <div class="transaction-total">
+            <span>Transaction Total:</span>
+            <span>$${(t.totalPrice || 0).toFixed(2)}</span>
+          </div>
+        </div>
+      `
+      )
+      .join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Client Transactions - ${partner?.partnerName}</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              font-size: 12px;
+              padding: 20mm;
+              background: #fff;
+              color: #333;
+            }
+            .header {
+              text-align: center;
+              padding-bottom: 15px;
+              margin-bottom: 15px;
+              border-bottom: 2px solid #0066cc;
+            }
+            .business-name { font-size: 20px; font-weight: bold; color: #0066cc; }
+            .business-info { font-size: 11px; color: #666; margin-top: 4px; }
+            .client-info {
+              background: #f5f5f5;
+              padding: 12px;
+              border-radius: 6px;
+              margin-bottom: 15px;
+            }
+            .client-name { font-size: 16px; font-weight: bold; color: #333; }
+            .client-detail { font-size: 11px; color: #666; margin-top: 4px; }
+            .transaction-section {
+              border: 1px solid #e0e0e0;
+              border-radius: 6px;
+              margin-bottom: 15px;
+              padding: 12px;
+              page-break-inside: avoid;
+            }
+            .transaction-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding-bottom: 10px;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #eee;
+            }
+            .transaction-id { font-weight: bold; font-size: 13px; margin-right: 10px; }
+            .transaction-date { color: #666; font-size: 11px; }
+            .items-table { width: 100%; border-collapse: collapse; }
+            .items-table th { background: #f5f5f5; padding: 8px; text-align: left; font-size: 10px; font-weight: 600; }
+            .items-table th.center, .items-table td.center { text-align: center; width: 60px; }
+            .items-table th.right, .items-table td.right { text-align: right; width: 90px; }
+            .items-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; font-size: 11px; }
+            .transaction-total {
+              display: flex;
+              justify-content: space-between;
+              padding-top: 10px;
+              margin-top: 10px;
+              border-top: 1px solid #eee;
+              font-weight: bold;
+              font-size: 13px;
+            }
+            .status-completed { color: #166534; font-weight: 600; }
+            .status-pending { color: #92400e; font-weight: 600; }
+            .status-cancelled { color: #991b1b; font-weight: 600; }
+            .summary {
+              background: #f0f7ff;
+              padding: 12px;
+              border-radius: 6px;
+              display: flex;
+              justify-content: space-between;
+            }
+            .summary-item { text-align: center; }
+            .summary-value { font-size: 18px; font-weight: bold; color: #0066cc; }
+            .summary-label { font-size: 10px; color: #666; }
+            .footer { text-align: center; margin-top: 20px; font-size: 10px; color: #999; }
+            @media print { body { padding: 10mm; } .transaction-section { break-inside: avoid; } }
+            @page { margin: 10mm; size: A4 portrait; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="business-name">${businessName}</div>
+            ${businessAddress ? `<div class="business-info">${businessAddress}</div>` : ''}
+            ${businessPhone ? `<div class="business-info">${businessPhone}</div>` : ''}
+          </div>
+          
+          <div class="client-info">
+            <div class="client-name">${partner?.partnerName || 'Client'}</div>
+            ${partner?.email ? `<div class="client-detail">Email: ${partner.email}</div>` : ''}
+            ${partner?.phoneNumber ? `<div class="client-detail">Phone: ${partner.phoneNumber}</div>` : ''}
+            ${partner?.address ? `<div class="client-detail">Address: ${partner.address}</div>` : ''}
+          </div>
+
+          ${transactionsHtml}
+
+          <div class="summary">
+            <div class="summary-item">
+              <div class="summary-value">${transactions.length}</div>
+              <div class="summary-label">Total Transactions</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-value">$${totalAmount.toFixed(2)}</div>
+              <div class="summary-label">Total Amount</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-value">$${(totalAmount / transactions.length).toFixed(2)}</div>
+              <div class="summary-label">Average Transaction</div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>Generated on ${new Date().toLocaleString()}</p>
+          </div>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
+  // Reset detail filters
+  const resetDetailFilters = () => {
+    setDetailFilters({
+      dateFrom: '',
+      dateTo: '',
+      priceMin: '',
+      priceMax: '',
+      status: '',
+    });
+  };
 
   // Fetch clients with pagination
   const [partners, { refetch }] = createResource(
@@ -130,6 +394,8 @@ export default function ClientsPage() {
     setSelectedPartner(null);
     setError(null);
     setDetailData(null);
+    resetDetailFilters();
+    setShowDetailFilters(false);
   };
 
   // Handle create
@@ -185,6 +451,14 @@ export default function ClientsPage() {
       setIsSubmitting(false);
     }
   };
+
+  // Handle action query param (from FAB - use createEffect to react to changes)
+  createEffect(() => {
+    if (searchParams['action'] === 'create') {
+      openCreateModal();
+      setSearchParams({ action: undefined });
+    }
+  });
 
   return (
     <div class="space-y-6 py-8">
@@ -597,30 +871,205 @@ export default function ClientsPage() {
             if (e.target === e.currentTarget) closeModal();
           }}
         >
-          <div class="max-h-[80vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-bg-surface p-6 shadow-xl">
+          <div class="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-bg-surface p-6 shadow-xl">
             <div class="mb-4 flex items-center justify-between">
               <h2 class="text-xl font-bold text-text-primary">
                 {selectedPartner()?.partnerName} - Transactions
               </h2>
-              <button
-                onClick={closeModal}
-                class="text-text-secondary hover:text-text-primary"
-              >
-                <svg
-                  class="h-6 w-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <div class="flex items-center gap-2">
+                <Button
+                  variant={showDetailFilters() ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowDetailFilters(!showDetailFilters())}
+                  title="Toggle Filters"
                 >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    class="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                    />
+                  </svg>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintTransactions}
+                  disabled={filteredDetailData().length === 0}
+                  title="Print Report"
+                >
+                  <svg
+                    class="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                    />
+                  </svg>
+                </Button>
+                <button
+                  onClick={closeModal}
+                  class="text-text-secondary hover:text-text-primary"
+                >
+                  <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
+
+            {/* Filters Panel */}
+            <Show when={showDetailFilters()}>
+              <div class="bg-bg-subtle mb-4 rounded-lg border border-border-default p-4">
+                <div class="mb-3 flex items-center justify-between">
+                  <span class="text-sm font-medium text-text-secondary">
+                    Filters
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={resetDetailFilters}
+                  >
+                    Reset
+                  </Button>
+                </div>
+                <div class="grid grid-cols-2 gap-4 md:grid-cols-5">
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-text-secondary">
+                      Date From
+                    </label>
+                    <input
+                      type="date"
+                      value={detailFilters().dateFrom}
+                      onChange={(e) =>
+                        setDetailFilters((prev) => ({
+                          ...prev,
+                          dateFrom: e.currentTarget.value,
+                        }))
+                      }
+                      class="w-full rounded border border-border-default bg-bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-text-secondary">
+                      Date To
+                    </label>
+                    <input
+                      type="date"
+                      value={detailFilters().dateTo}
+                      onChange={(e) =>
+                        setDetailFilters((prev) => ({
+                          ...prev,
+                          dateTo: e.currentTarget.value,
+                        }))
+                      }
+                      class="w-full rounded border border-border-default bg-bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-text-secondary">
+                      Min Price
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="$0"
+                      value={detailFilters().priceMin}
+                      onChange={(e) =>
+                        setDetailFilters((prev) => ({
+                          ...prev,
+                          priceMin: e.currentTarget.value,
+                        }))
+                      }
+                      class="w-full rounded border border-border-default bg-bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-text-secondary">
+                      Max Price
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="$999"
+                      value={detailFilters().priceMax}
+                      onChange={(e) =>
+                        setDetailFilters((prev) => ({
+                          ...prev,
+                          priceMax: e.currentTarget.value,
+                        }))
+                      }
+                      class="w-full rounded border border-border-default bg-bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-text-secondary">
+                      Status
+                    </label>
+                    <select
+                      value={detailFilters().status}
+                      onChange={(e) =>
+                        setDetailFilters((prev) => ({
+                          ...prev,
+                          status: e.currentTarget.value,
+                        }))
+                      }
+                      class="w-full rounded border border-border-default bg-bg-surface px-2 py-1.5 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                    >
+                      <option value="">All</option>
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </Show>
+
+            {/* Results Summary */}
+            <Show when={detailData() && detailData()!.length > 0}>
+              <div class="bg-bg-subtle mb-4 flex items-center justify-between rounded-lg px-4 py-2 text-sm">
+                <span class="text-text-secondary">
+                  Showing{' '}
+                  <span class="font-medium text-text-primary">
+                    {filteredDetailData().length}
+                  </span>{' '}
+                  of{' '}
+                  <span class="font-medium text-text-primary">
+                    {detailData()!.length}
+                  </span>{' '}
+                  transactions
+                </span>
+                <span class="font-medium text-text-primary">
+                  Total: $
+                  {filteredDetailData()
+                    .reduce(
+                      (sum: number, t: any) => sum + (t.totalPrice || 0),
+                      0
+                    )
+                    .toFixed(2)}
+                </span>
+              </div>
+            </Show>
 
             <Show when={loadingDetails()}>
               <div class="py-12 text-center">
@@ -643,58 +1092,69 @@ export default function ClientsPage() {
                   </div>
                 }
               >
-                <div class="space-y-3">
-                  <For each={detailData()}>
-                    {(item: any) => (
-                      <div class="rounded-lg border border-border-default p-4 hover:bg-bg-hover">
-                        <div class="flex items-start justify-between">
-                          <div class="flex-1">
-                            {/* Transaction Details */}
-                            <div class="text-sm">
-                              <p class="font-medium text-text-primary">
-                                <CopyableId
-                                  id={item._id || ''}
-                                  prefix="Transaction"
-                                />
-                              </p>
-                              <p class="mt-1 text-text-secondary">
-                                Status:{' '}
-                                <span
-                                  class={`font-semibold ${
-                                    item.status === 'completed'
-                                      ? 'text-status-success-text'
-                                      : item.status === 'pending'
-                                        ? 'text-status-warning-text'
-                                        : item.status === 'cancelled'
-                                          ? 'text-status-error-text'
-                                          : 'text-text-primary'
-                                  }`}
-                                >
-                                  {item.status || 'N/A'}
-                                </span>
-                              </p>
-                              <p class="text-text-secondary">
-                                Total:{' '}
-                                <span class="font-semibold text-text-primary">
-                                  ${item.totalPrice?.toFixed(2) || '0.00'}
-                                </span>
-                              </p>
-                              <p class="mt-1 text-xs text-text-secondary">
-                                {item.itemsDeliveredDate
-                                  ? new Date(
-                                      item.itemsDeliveredDate
-                                    ).toLocaleDateString()
-                                  : new Date(
-                                      item.createdAt
-                                    ).toLocaleDateString()}
-                              </p>
+                <Show
+                  when={filteredDetailData().length > 0}
+                  fallback={
+                    <div class="py-8 text-center">
+                      <p class="text-text-secondary">
+                        No transactions match your filters
+                      </p>
+                    </div>
+                  }
+                >
+                  <div class="space-y-3">
+                    <For each={filteredDetailData()}>
+                      {(item: any) => (
+                        <div class="rounded-lg border border-border-default p-4 hover:bg-bg-hover">
+                          <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                              {/* Transaction Details */}
+                              <div class="text-sm">
+                                <p class="font-medium text-text-primary">
+                                  <CopyableId
+                                    id={item._id || ''}
+                                    prefix="Transaction"
+                                  />
+                                </p>
+                                <p class="mt-1 text-text-secondary">
+                                  Status:{' '}
+                                  <span
+                                    class={`font-semibold ${
+                                      item.status === 'completed'
+                                        ? 'text-status-success-text'
+                                        : item.status === 'pending'
+                                          ? 'text-status-warning-text'
+                                          : item.status === 'cancelled'
+                                            ? 'text-status-error-text'
+                                            : 'text-text-primary'
+                                    }`}
+                                  >
+                                    {item.status || 'N/A'}
+                                  </span>
+                                </p>
+                                <p class="text-text-secondary">
+                                  Total:{' '}
+                                  <span class="font-semibold text-text-primary">
+                                    ${item.totalPrice?.toFixed(2) || '0.00'}
+                                  </span>
+                                </p>
+                                <p class="mt-1 text-xs text-text-secondary">
+                                  {item.itemsDeliveredDate
+                                    ? new Date(
+                                        item.itemsDeliveredDate
+                                      ).toLocaleDateString()
+                                    : new Date(
+                                        item.createdAt
+                                      ).toLocaleDateString()}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </For>
-                </div>
+                      )}
+                    </For>
+                  </div>
+                </Show>
               </Show>
             </Show>
           </div>

@@ -31,6 +31,7 @@ interface ItemFormData {
   quantity: string;
   unit: string;
   storeHouse: string;
+  lowStockAt: string;
 }
 
 export const AddItemModal: Component<AddItemModalProps> = (props) => {
@@ -43,6 +44,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
     quantity: '0',
     unit: 'pcs',
     storeHouse: '',
+    lowStockAt: '10',
   });
 
   const [nameInput, setNameInput] = createSignal('');
@@ -191,6 +193,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
           id: selectedStorehouse.id,
           name: selectedStorehouse.name,
         },
+        lowStockAt: parseInt(data.lowStockAt) || 10,
       };
 
       await createItem(payload);
@@ -211,6 +214,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
         quantity: '0',
         unit: 'pcs',
         storeHouse: '',
+        lowStockAt: '10',
       });
       setNameInput('');
       setUnitInput('pcs');
@@ -237,6 +241,7 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
         quantity: '0',
         unit: 'pcs',
         storeHouse: '',
+        lowStockAt: '10',
       });
       setNameInput('');
       setUnitInput('pcs');
@@ -474,6 +479,33 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                         placeholder="0"
                         class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                       />
+                    </div>
+
+                    {/* Low Stock Alert */}
+                    <div>
+                      <label class="block text-sm font-medium text-text-primary">
+                        Low Stock Alert
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData().lowStockAt}
+                        onInput={(e) =>
+                          setFormData({
+                            ...formData(),
+                            lowStockAt: e.currentTarget.value,
+                          })
+                        }
+                        onFocus={() => {
+                          setShowSuggestions(false);
+                          setShowUnitSuggestions(false);
+                        }}
+                        placeholder="10"
+                        class="placeholder-text-tertiary mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-text-primary focus:border-accent-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
+                      />
+                      <p class="text-text-tertiary mt-1 text-xs">
+                        Alert when stock falls below this number
+                      </p>
                     </div>
 
                     {/* Unit */}

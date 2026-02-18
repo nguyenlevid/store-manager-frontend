@@ -22,6 +22,7 @@ interface BackendPartner {
   email?: string;
   address?: string;
   worksWithBusiness: string;
+  isWalkIn?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -49,6 +50,7 @@ function mapBackendPartner(partner: BackendPartner): Partner {
     email: partner.email,
     address: partner.address,
     worksWithBusiness: partner.worksWithBusiness,
+    isWalkIn: partner.isWalkIn,
     createdAt: partner.createdAt || new Date().toISOString(),
     updatedAt: partner.updatedAt || new Date().toISOString(),
   };

@@ -20,7 +20,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-1', name: 'Main Warehouse' },
-    reorderLevel: 5,
+    lowStockAt: 5,
     createdAt: '2024-01-15T00:00:00Z',
     updatedAt: '2026-01-18T10:30:00Z',
   },
@@ -36,7 +36,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-1', name: 'Main Warehouse' },
-    reorderLevel: 10,
+    lowStockAt: 10,
     createdAt: '2024-02-01T00:00:00Z',
     updatedAt: '2026-01-17T15:20:00Z',
   },
@@ -52,7 +52,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-1', name: 'Main Warehouse' },
-    reorderLevel: 3,
+    lowStockAt: 3,
     createdAt: '2024-03-10T00:00:00Z',
     updatedAt: '2026-01-16T09:00:00Z',
   },
@@ -68,7 +68,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-2', name: 'Store Location A' },
-    reorderLevel: 15,
+    lowStockAt: 15,
     createdAt: '2024-04-05T00:00:00Z',
     updatedAt: '2026-01-18T08:45:00Z',
   },
@@ -84,7 +84,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-1', name: 'Main Warehouse' },
-    reorderLevel: 8,
+    lowStockAt: 8,
     createdAt: '2024-05-20T00:00:00Z',
     updatedAt: '2026-01-15T14:30:00Z',
   },
@@ -100,7 +100,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-1', name: 'Main Warehouse' },
-    reorderLevel: 20,
+    lowStockAt: 20,
     createdAt: '2024-06-01T00:00:00Z',
     updatedAt: '2026-01-18T11:00:00Z',
   },
@@ -116,7 +116,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-2', name: 'Store Location A' },
-    reorderLevel: 5,
+    lowStockAt: 5,
     createdAt: '2024-07-10T00:00:00Z',
     updatedAt: '2026-01-14T16:20:00Z',
   },
@@ -132,7 +132,7 @@ export const MOCK_ITEMS: Item[] = [
     unit: 'pcs',
     imageUrl: [],
     storeHouse: { id: 'store-1', name: 'Main Warehouse' },
-    reorderLevel: 4,
+    lowStockAt: 4,
     createdAt: '2024-08-15T00:00:00Z',
     updatedAt: '2026-01-18T07:30:00Z',
   },
@@ -143,8 +143,7 @@ export const MOCK_ITEMS: Item[] = [
  */
 export function getStockStatus(item: Item): StockStatus {
   if (item.quantity === 0) return 'out-of-stock';
-  if (item.reorderLevel && item.quantity <= item.reorderLevel)
-    return 'low-stock';
+  if (item.lowStockAt && item.quantity <= item.lowStockAt) return 'low-stock';
   return 'in-stock';
 }
 
@@ -161,9 +160,7 @@ export function getInventorySummary(items: Item[]): InventorySummary {
     outOfStockCount: items.filter((item) => item.quantity === 0).length,
     lowStockCount: items.filter(
       (item) =>
-        item.quantity > 0 &&
-        item.reorderLevel &&
-        item.quantity <= item.reorderLevel
+        item.quantity > 0 && item.lowStockAt && item.quantity <= item.lowStockAt
     ).length,
   };
 }

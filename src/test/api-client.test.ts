@@ -61,8 +61,10 @@ describe('API Client - Single-Flight Refresh', () => {
     await Promise.all(requests);
 
     // Count refresh calls
-    const refreshCalls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
-      (call: unknown[]) => (call[0] as string).includes('/auth/refresh')
+    const refreshCalls = (
+      globalThis.fetch as ReturnType<typeof vi.fn>
+    ).mock.calls.filter((call: unknown[]) =>
+      (call[0] as string).includes('/auth/refresh')
     );
 
     // Should only call refresh once despite multiple 401s

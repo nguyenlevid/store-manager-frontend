@@ -276,12 +276,16 @@ export async function createTransaction(
 
   const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
 
-  const payload = {
-    clientId: data.clientId,
+  const payload: Record<string, unknown> = {
     item: items,
     totalPrice,
     status: data.status || 'pending',
   };
+
+  // Only include clientId if provided (otherwise backend uses walk-in customer)
+  if (data.clientId) {
+    payload['clientId'] = data.clientId;
+  }
 
   const backendTransaction = await apiClient.post<BackendTransaction>(
     '/transaction',

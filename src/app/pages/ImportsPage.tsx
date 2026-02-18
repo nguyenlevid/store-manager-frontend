@@ -1,5 +1,13 @@
-import { createSignal, createResource, Show, For, Index } from 'solid-js';
+import {
+  createSignal,
+  createResource,
+  Show,
+  For,
+  Index,
+  createEffect,
+} from 'solid-js';
 import { createStore } from 'solid-js/store';
+import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardBody, CopyableId } from '@/shared/ui';
 import {
@@ -15,6 +23,11 @@ import {
 } from '@/shared/api';
 import { getSuppliers, getInventoryItems } from '@/shared/api';
 import { apiClient } from '@/shared/lib/api-client';
+import {
+  formatCurrency as sharedFormatCurrency,
+  formatDate as sharedFormatDate,
+} from '@/shared/lib/format';
+import { getBusiness } from '@/shared/stores/business.store';
 import type { Import, ImportFormData } from '@/shared/types/import.types';
 
 type ModalMode =
@@ -43,7 +56,18 @@ interface FormItem {
   unitPrice: string;
 }
 
+interface AdvancedFilters {
+  supplierId: string;
+  dateFrom: string;
+  dateTo: string;
+  priceMin: string;
+  priceMax: string;
+  sortBy: 'createdAt' | 'totalPrice' | 'supplierName';
+  sortOrder: 'asc' | 'desc';
+}
+
 export default function ImportsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = createSignal<
     'all' | 'pending' | 'completed' | 'cancelled'
   >('all');
@@ -58,6 +82,28 @@ export default function ImportsPage() {
     null
   );
 
+  // Advanced filters state
+  const [showAdvancedFilters, setShowAdvancedFilters] = createSignal(false);
+  const [advancedFilters, setAdvancedFilters] = createSignal<AdvancedFilters>({
+    supplierId: '',
+    dateFrom: '',
+    dateTo: '',
+    priceMin: '',
+    priceMax: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  });
+
+  // Multi-select state for printing
+  const [selectedImports, setSelectedImports] = createSignal<Set<string>>(
+    new Set()
+  );
+
+  // Print mode: 'report' (A4 business report) or 'receipt' (thermal 80mm)
+  const [printMode, setPrintMode] = createSignal<'report' | 'receipt'>(
+    'report'
+  );
+
   // Form state
   const [supplierId, setSupplierId] = createSignal<string>('');
   const [formItems, setFormItems] = createStore<FormItem[]>([]);
@@ -65,21 +111,69 @@ export default function ImportsPage() {
   // Resources
   const [suppliers] = createResource(() => getSuppliers());
   const [items] = createResource(() => getInventoryItems());
+  const business = getBusiness;
 
-  // Fetch imports based on filter with pagination
+  // Fetch imports with all filters (server-side filtering)
   const [imports, { refetch }] = createResource(
-    () => ({ filter: filter(), page: currentPage() }),
-    async ({ filter: filterType, page }) => {
-      const status = filterType === 'all' ? undefined : filterType;
-      const response = await getImportsWithPagination({
-        status,
-        page,
+    // Reactive dependency - will refetch when any of these change
+    () => {
+      const advFilters = advancedFilters();
+      return {
+        status: filter() === 'all' ? undefined : filter(),
+        search: searchTerm() || undefined,
+        supplierId: advFilters.supplierId || undefined,
+        dateFrom: advFilters.dateFrom || undefined,
+        dateTo: advFilters.dateTo || undefined,
+        priceMin: advFilters.priceMin
+          ? parseFloat(advFilters.priceMin)
+          : undefined,
+        priceMax: advFilters.priceMax
+          ? parseFloat(advFilters.priceMax)
+          : undefined,
+        sortBy: advFilters.sortBy,
+        sortOrder: advFilters.sortOrder,
+        page: currentPage(),
         limit: 20,
-      });
+      };
+    },
+    async (filters) => {
+      const response = await getImportsWithPagination(filters);
       setPaginationInfo(response.pagination);
       return response.imports;
     }
   );
+
+  // Debounced search - only trigger after user stops typing
+  let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  const handleSearchChange = (value: string) => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      setSearchTerm(value);
+      setCurrentPage(1);
+    }, 300);
+  };
+
+  // Handle advanced filter changes (trigger refetch)
+  const handleAdvancedFilterChange = <K extends keyof AdvancedFilters>(
+    key: K,
+    value: AdvancedFilters[K]
+  ) => {
+    setAdvancedFilters((prev) => ({ ...prev, [key]: value }));
+    setCurrentPage(1);
+  };
+
+  // Reset advanced filters but keep status
+  const resetAdvancedFilters = () => {
+    setAdvancedFilters({
+      supplierId: '',
+      dateFrom: '',
+      dateTo: '',
+      priceMin: '',
+      priceMax: '',
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+  };
 
   // Reset to page 1 when filter changes
   const changeFilter = (
@@ -97,47 +191,423 @@ export default function ImportsPage() {
     }
   };
 
-  // Filter imports by search term
+  // Filter imports by search term (now mostly handled server-side)
   const filteredImports = () => {
-    const importsData = imports() || [];
-    const search = searchTerm().toLowerCase();
+    return imports() || [];
+  };
 
-    if (!search) return importsData;
+  // Multi-select handlers
+  const toggleSelectImport = (importId: string) => {
+    setSelectedImports((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(importId)) {
+        newSet.delete(importId);
+      } else {
+        newSet.add(importId);
+      }
+      return newSet;
+    });
+  };
 
-    // Extract digits from search for phone number matching
-    const searchDigits = search.replace(/\D/g, '');
+  const toggleSelectAll = () => {
+    const filtered = filteredImports();
+    const currentSelected = selectedImports();
 
-    const filtered = importsData.filter((imp: Import) => {
-      // For phone numbers, compare digits only
-      const phoneMatch =
-        imp.supplierPhoneNumber && searchDigits.length > 0
-          ? imp.supplierPhoneNumber.replace(/\D/g, '').includes(searchDigits)
-          : false;
+    if (currentSelected.size === filtered.length && filtered.length > 0) {
+      // Deselect all
+      setSelectedImports(new Set<string>());
+    } else {
+      // Select all filtered
+      setSelectedImports(new Set<string>(filtered.map((imp) => imp.id)));
+    }
+  };
 
-      return (
-        imp.id.toLowerCase().includes(search) ||
-        imp.supplierName?.toLowerCase().includes(search) ||
-        imp.supplierEmail?.toLowerCase().includes(search) ||
-        phoneMatch ||
-        imp.status.toLowerCase().includes(search) ||
-        imp.totalPrice.toString().includes(search) ||
-        new Date(imp.createdAt).toLocaleDateString().includes(search)
-      );
+  const clearSelection = () => {
+    setSelectedImports(new Set<string>());
+  };
+
+  // Group imports by date for organized printing
+  const groupImportsByDate = (importRecords: Import[]) => {
+    const grouped: Record<string, Import[]> = {};
+
+    importRecords.forEach((imp) => {
+      const dateKey = new Date(imp.createdAt).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(imp);
     });
 
-    return filtered;
+    // Sort dates (newest first)
+    const sortedDates = Object.keys(grouped).sort(
+      (a, b) => new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    return { grouped, sortedDates };
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  // Print handler - supports Report (A4 vertical) and Receipt (thermal 80mm) modes
+  const handlePrintReceipts = () => {
+    const selected = selectedImports();
+    if (selected.size === 0) return;
+
+    const importsToPrint = filteredImports().filter((imp) =>
+      selected.has(imp.id)
+    );
+    const { grouped, sortedDates } = groupImportsByDate(importsToPrint);
+
+    // Get business info for header
+    const businessInfo = business();
+    const businessName = businessInfo?.name || 'Store Manager';
+    const businessAddress = businessInfo?.address || '';
+    const businessPhone = businessInfo?.phoneNumber || '';
+    const businessEmail = businessInfo?.email || '';
+
+    // Calculate summary totals
+    const totalAmount = importsToPrint.reduce(
+      (sum, imp) => sum + imp.totalPrice,
+      0
+    );
+    const totalImports = importsToPrint.length;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const isReceipt = printMode() === 'receipt';
+
+    if (isReceipt) {
+      // RECEIPT MODE - Thermal 80mm compact style
+      const importsHtml = importsToPrint
+        .map(
+          (imp) => `
+        <div class="import-section">
+          <div class="import-header">
+            <span class="import-id">#${imp.id.slice(-8).toUpperCase()}</span>
+            <span>${new Date(imp.createdAt).toLocaleDateString()} ${new Date(imp.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <div class="supplier-name">${imp.supplierName || 'No Supplier'}</div>
+          <table class="items-table">
+            ${imp.items
+              .map(
+                (item) => `
+              <tr>
+                <td class="item-name">${item.itemName || 'Item'}</td>
+                <td class="item-qty">${item.quantity}</td>
+                <td class="item-total">$${item.totalPrice.toFixed(2)}</td>
+              </tr>
+            `
+              )
+              .join('')}
+          </table>
+          <div class="import-total">
+            <span>Total:</span>
+            <span>$${imp.totalPrice.toFixed(2)}</span>
+          </div>
+        </div>
+      `
+        )
+        .join('');
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Import Receipt - ${new Date().toLocaleDateString()}</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                width: 80mm;
+                padding: 5mm;
+                background: #fff;
+              }
+              .header {
+                text-align: center;
+                padding-bottom: 8px;
+                margin-bottom: 8px;
+                border-bottom: 1px dashed #000;
+              }
+              .business-name { font-size: 16px; font-weight: bold; }
+              .business-info { font-size: 10px; color: #333; }
+              .report-title { font-size: 12px; font-weight: bold; margin-top: 4px; color: #0066cc; }
+              .import-section {
+                padding: 8px 0;
+                border-bottom: 1px dashed #ccc;
+                page-break-inside: avoid;
+              }
+              .import-header {
+                display: flex;
+                justify-content: space-between;
+                font-size: 10px;
+                margin-bottom: 4px;
+              }
+              .import-id { font-weight: bold; }
+              .supplier-name { font-size: 11px; margin-bottom: 4px; }
+              .items-table { width: 100%; border-collapse: collapse; }
+              .items-table td { padding: 2px 0; font-size: 11px; }
+              .item-name { text-align: left; }
+              .item-qty { text-align: center; width: 30px; }
+              .item-total { text-align: right; width: 50px; }
+              .import-total {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                padding-top: 4px;
+                border-top: 1px dotted #999;
+                margin-top: 4px;
+              }
+              .grand-total {
+                text-align: center;
+                padding: 10px 0;
+                margin-top: 8px;
+                border-top: 2px solid #000;
+                font-weight: bold;
+                font-size: 14px;
+              }
+              .footer {
+                text-align: center;
+                font-size: 10px;
+                padding-top: 8px;
+                color: #666;
+              }
+              @media print {
+                body { width: 80mm; }
+                .import-section { break-inside: avoid; }
+              }
+              @page { margin: 0; size: 80mm auto; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="business-name">${businessName}</div>
+              ${businessAddress ? `<div class="business-info">${businessAddress}</div>` : ''}
+              ${businessPhone ? `<div class="business-info">${businessPhone}</div>` : ''}
+              <div class="report-title">PURCHASE IMPORTS</div>
+            </div>
+            
+            ${importsHtml}
+            
+            <div class="grand-total">
+              <div>GRAND TOTAL: $${totalAmount.toFixed(2)}</div>
+              <div style="font-size: 11px; font-weight: normal;">${totalImports} import${totalImports > 1 ? 's' : ''}</div>
+            </div>
+            
+            <div class="footer">
+              <p>${new Date().toLocaleString()}</p>
+              <p>Purchase Report</p>
+            </div>
+          </body>
+        </html>
+      `);
+    } else {
+      // REPORT MODE - A4 business report with vertical layout
+      const dateGroupsHtml = sortedDates
+        .map((dateKey) => {
+          const dateImports = grouped[dateKey] ?? [];
+          const dateTotal = dateImports.reduce(
+            (sum, imp) => sum + imp.totalPrice,
+            0
+          );
+
+          const importsHtml = dateImports
+            .map(
+              (imp) => `
+            <tr class="import-row">
+              <td class="import-id">#${imp.id.slice(-8).toUpperCase()}</td>
+              <td class="supplier">${imp.supplierName || 'No Supplier'}</td>
+              <td class="items-count">${imp.items.length} items</td>
+              <td class="status ${imp.status}">${imp.status}</td>
+              <td class="total">$${imp.totalPrice.toFixed(2)}</td>
+            </tr>
+            <tr class="import-items">
+              <td colspan="5">
+                <table class="items-detail">
+                  ${imp.items
+                    .map(
+                      (item) => `
+                    <tr>
+                      <td class="item-name">${item.itemName || 'Item'}</td>
+                      <td class="item-qty">${item.quantity} x $${item.unitPrice.toFixed(2)}</td>
+                      <td class="item-total">$${item.totalPrice.toFixed(2)}</td>
+                    </tr>
+                  `
+                    )
+                    .join('')}
+                </table>
+              </td>
+            </tr>
+          `
+            )
+            .join('');
+
+          return `
+            <div class="date-group">
+              <div class="date-header">
+                <h3>${dateKey}</h3>
+                <span class="date-total">${dateImports.length} imports - $${dateTotal.toFixed(2)}</span>
+              </div>
+              <table class="imports-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Supplier</th>
+                    <th>Items</th>
+                    <th>Status</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${importsHtml}
+                </tbody>
+              </table>
+            </div>
+          `;
+        })
+        .join('');
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Import Report - ${new Date().toLocaleDateString()}</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 12px;
+                padding: 20mm;
+                background: #fff;
+                color: #333;
+              }
+              .header {
+                text-align: center;
+                padding-bottom: 20px;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #0066cc;
+              }
+              .business-name { font-size: 24px; font-weight: bold; color: #0066cc; }
+              .business-info { font-size: 12px; color: #666; margin-top: 4px; }
+              .report-title { font-size: 16px; font-weight: bold; margin-top: 10px; color: #333; }
+              .summary {
+                display: flex;
+                justify-content: space-between;
+                padding: 15px;
+                background: #f5f5f5;
+                border-radius: 8px;
+                margin-bottom: 20px;
+              }
+              .summary-item { text-align: center; }
+              .summary-value { font-size: 20px; font-weight: bold; color: #0066cc; }
+              .summary-label { font-size: 11px; color: #666; }
+              .date-group { margin-bottom: 25px; page-break-inside: avoid; }
+              .date-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 15px;
+                background: #0066cc;
+                color: white;
+                border-radius: 6px 6px 0 0;
+              }
+              .date-header h3 { margin: 0; font-size: 14px; }
+              .date-total { font-size: 12px; }
+              .imports-table {
+                width: 100%;
+                border-collapse: collapse;
+                background: #fff;
+                border: 1px solid #ddd;
+              }
+              .imports-table th {
+                background: #f0f0f0;
+                padding: 10px;
+                text-align: left;
+                font-size: 11px;
+                text-transform: uppercase;
+                color: #666;
+              }
+              .import-row td { padding: 10px; border-bottom: 1px solid #eee; }
+              .import-id { font-weight: bold; color: #0066cc; }
+              .status { font-size: 10px; padding: 2px 6px; border-radius: 10px; }
+              .status.completed { background: #dcfce7; color: #166534; }
+              .status.pending { background: #fef3c7; color: #92400e; }
+              .status.cancelled { background: #fee2e2; color: #991b1b; }
+              .total { text-align: right; font-weight: bold; }
+              .import-items td { padding: 5px 10px 15px 10px; background: #fafafa; }
+              .items-detail { width: 100%; margin-left: 20px; }
+              .items-detail td { padding: 3px 10px; font-size: 11px; color: #666; }
+              .item-total { text-align: right; }
+              .footer {
+                text-align: center;
+                padding-top: 20px;
+                margin-top: 30px;
+                border-top: 1px solid #ddd;
+                color: #999;
+                font-size: 10px;
+              }
+              @media print {
+                body { padding: 10mm; }
+                .date-group { break-inside: avoid; }
+              }
+              @page { margin: 10mm; size: A4 portrait; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="business-name">${businessName}</div>
+              ${businessAddress ? `<div class="business-info">${businessAddress}</div>` : ''}
+              ${businessPhone || businessEmail ? `<div class="business-info">${[businessPhone, businessEmail].filter(Boolean).join(' | ')}</div>` : ''}
+              <div class="report-title">PURCHASE IMPORT REPORT</div>
+            </div>
+            
+            <div class="summary">
+              <div class="summary-item">
+                <div class="summary-value">${totalImports}</div>
+                <div class="summary-label">Total Imports</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">$${totalAmount.toFixed(2)}</div>
+                <div class="summary-label">Total Value</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">$${(totalAmount / totalImports).toFixed(2)}</div>
+                <div class="summary-label">Average Import</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">${sortedDates.length}</div>
+                <div class="summary-label">Days</div>
+              </div>
+            </div>
+            
+            ${dateGroupsHtml}
+            
+            <div class="footer">
+              <p>Generated on ${new Date().toLocaleString()}</p>
+              <p>Purchase Import Report - ${businessName}</p>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
   };
+
+  const formatCurrency = (amount: number) =>
+    sharedFormatCurrency(amount, business()?.currency);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString();
+    return sharedFormatDate(dateString, business()?.timezone);
   };
 
   // Modal handlers
@@ -178,6 +648,10 @@ export default function ImportsPage() {
     setSelectedImport(null);
     setError(null);
     setConfirmAction(null);
+    // Clear URL params when closing modal
+    if (searchParams['id']) {
+      setSearchParams({ id: undefined });
+    }
   };
 
   // Show confirmation modal
@@ -395,6 +869,18 @@ export default function ImportsPage() {
     }
   };
 
+  // Handle id query param (from dashboard recent imports)
+  createEffect(() => {
+    const importId = searchParams['id'];
+    if (importId && imports()) {
+      const importItem = imports()?.find((i) => i.id === importId);
+      if (importItem) {
+        setSelectedImport(importItem);
+        setModalMode('detail');
+      }
+    }
+  });
+
   return (
     <div class="space-y-6 py-8">
       {/* Header */}
@@ -425,7 +911,7 @@ export default function ImportsPage() {
 
       {/* Search and Filters */}
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <Button
             variant={filter() === 'all' ? 'primary' : 'outline'}
             onClick={() => changeFilter('all')}
@@ -452,29 +938,254 @@ export default function ImportsPage() {
           </Button>
         </div>
 
-        <div class="relative w-full sm:w-64">
-          <input
-            type="text"
-            placeholder="Search by ID, supplier, email, phone..."
-            value={searchTerm()}
-            onInput={(e) => setSearchTerm(e.currentTarget.value)}
-            class="placeholder-text-tertiary w-full rounded-lg border border-border-default bg-bg-surface px-4 py-2 pl-10 text-sm text-text-primary focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary"
-          />
-          <svg
-            class="text-text-tertiary absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <div class="flex items-center gap-2">
+          <div class="relative w-full sm:w-64">
+            <input
+              type="text"
+              placeholder="Search by ID, supplier, email, phone..."
+              onInput={(e) => handleSearchChange(e.currentTarget.value)}
+              class="placeholder-text-tertiary w-full rounded-lg border border-border-default bg-bg-surface px-4 py-2 pl-10 text-sm text-text-primary focus:border-accent-primary focus:outline-none focus:ring-2 focus:ring-accent-primary"
             />
-          </svg>
+            <svg
+              class="text-text-tertiary absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+          <Button
+            variant={showAdvancedFilters() ? 'primary' : 'outline'}
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters())}
+            title="Advanced Filters"
+          >
+            <svg
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+              />
+            </svg>
+          </Button>
         </div>
       </div>
+
+      {/* Advanced Filters Panel */}
+      <Show when={showAdvancedFilters()}>
+        <Card>
+          <CardBody>
+            <div class="mb-4 flex items-center justify-between">
+              <h3 class="font-semibold text-text-primary">Advanced Filters</h3>
+              <Button variant="ghost" size="sm" onClick={resetAdvancedFilters}>
+                Reset Filters
+              </Button>
+            </div>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Supplier Filter */}
+              <div>
+                <label class="mb-1 block text-sm font-medium text-text-secondary">
+                  Supplier
+                </label>
+                <select
+                  value={advancedFilters().supplierId}
+                  onChange={(e) =>
+                    handleAdvancedFilterChange(
+                      'supplierId',
+                      e.currentTarget.value
+                    )
+                  }
+                  class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                >
+                  <option value="">All Suppliers</option>
+                  <For each={suppliers()}>
+                    {(supplier) => (
+                      <option value={supplier.id}>
+                        {supplier.partnerName}
+                      </option>
+                    )}
+                  </For>
+                </select>
+              </div>
+
+              {/* Date From */}
+              <div>
+                <label class="mb-1 block text-sm font-medium text-text-secondary">
+                  Date From
+                </label>
+                <input
+                  type="date"
+                  value={advancedFilters().dateFrom}
+                  onChange={(e) =>
+                    handleAdvancedFilterChange(
+                      'dateFrom',
+                      e.currentTarget.value
+                    )
+                  }
+                  class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                />
+              </div>
+
+              {/* Date To */}
+              <div>
+                <label class="mb-1 block text-sm font-medium text-text-secondary">
+                  Date To
+                </label>
+                <input
+                  type="date"
+                  value={advancedFilters().dateTo}
+                  onChange={(e) =>
+                    handleAdvancedFilterChange('dateTo', e.currentTarget.value)
+                  }
+                  class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                />
+              </div>
+
+              {/* Price Range */}
+              <div class="flex gap-2">
+                <div class="flex-1">
+                  <label class="mb-1 block text-sm font-medium text-text-secondary">
+                    Min Price
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="$0"
+                    value={advancedFilters().priceMin}
+                    onChange={(e) =>
+                      handleAdvancedFilterChange(
+                        'priceMin',
+                        e.currentTarget.value
+                      )
+                    }
+                    class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                  />
+                </div>
+                <div class="flex-1">
+                  <label class="mb-1 block text-sm font-medium text-text-secondary">
+                    Max Price
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="$999"
+                    value={advancedFilters().priceMax}
+                    onChange={(e) =>
+                      handleAdvancedFilterChange(
+                        'priceMax',
+                        e.currentTarget.value
+                      )
+                    }
+                    class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sorting Options */}
+            <div class="mt-4 flex gap-4 border-t border-border-default pt-4">
+              <div class="w-48">
+                <label class="mb-1 block text-sm font-medium text-text-secondary">
+                  Sort By
+                </label>
+                <select
+                  value={advancedFilters().sortBy}
+                  onChange={(e) =>
+                    handleAdvancedFilterChange(
+                      'sortBy',
+                      e.currentTarget.value as AdvancedFilters['sortBy']
+                    )
+                  }
+                  class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                >
+                  <option value="createdAt">Date</option>
+                  <option value="totalPrice">Total Price</option>
+                  <option value="supplierName">Supplier Name</option>
+                </select>
+              </div>
+              <div class="w-36">
+                <label class="mb-1 block text-sm font-medium text-text-secondary">
+                  Order
+                </label>
+                <select
+                  value={advancedFilters().sortOrder}
+                  onChange={(e) =>
+                    handleAdvancedFilterChange(
+                      'sortOrder',
+                      e.currentTarget.value as 'asc' | 'desc'
+                    )
+                  }
+                  class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                >
+                  <option value="desc">Newest First</option>
+                  <option value="asc">Oldest First</option>
+                </select>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </Show>
+
+      {/* Print Controls */}
+      <Show when={selectedImports().size > 0}>
+        <Card>
+          <CardBody>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <span class="font-medium text-text-primary">
+                  {selectedImports().size} import
+                  {selectedImports().size > 1 ? 's' : ''} selected
+                </span>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  Clear Selection
+                </Button>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                  <label class="text-sm text-text-secondary">Print Mode:</label>
+                  <select
+                    value={printMode()}
+                    onChange={(e) =>
+                      setPrintMode(
+                        e.currentTarget.value as 'report' | 'receipt'
+                      )
+                    }
+                    class="rounded-lg border border-border-default bg-bg-surface px-3 py-1.5 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
+                  >
+                    <option value="report">A4 Report</option>
+                    <option value="receipt">Thermal Receipt (80mm)</option>
+                  </select>
+                </div>
+                <Button variant="primary" onClick={handlePrintReceipts}>
+                  <svg
+                    class="mr-2 h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                    />
+                  </svg>
+                  Print Selected
+                </Button>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </Show>
 
       {/* Imports List */}
       <Card>
@@ -506,6 +1217,18 @@ export default function ImportsPage() {
                     <table class="min-w-full divide-y divide-border-default">
                       <thead class="bg-bg-subtle">
                         <tr>
+                          <th class="px-4 py-3 text-left">
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedImports().size ===
+                                  filteredImports().length &&
+                                filteredImports().length > 0
+                              }
+                              onChange={toggleSelectAll}
+                              class="h-4 w-4 rounded border-border-default text-accent-primary focus:ring-accent-primary"
+                            />
+                          </th>
                           <th class="px-6 py-3 text-left text-xs font-medium uppercase text-text-secondary">
                             Import ID
                           </th>
@@ -533,6 +1256,18 @@ export default function ImportsPage() {
                         <For each={filteredImports()}>
                           {(importRecord: Import) => (
                             <tr class="transition-colors hover:bg-bg-hover">
+                              <td class="whitespace-nowrap px-4 py-4">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedImports().has(
+                                    importRecord.id
+                                  )}
+                                  onChange={() =>
+                                    toggleSelectImport(importRecord.id)
+                                  }
+                                  class="h-4 w-4 rounded border-border-default text-accent-primary focus:ring-accent-primary"
+                                />
+                              </td>
                               <td class="whitespace-nowrap px-6 py-4 text-sm text-text-primary">
                                 <CopyableId id={importRecord.id} />
                               </td>

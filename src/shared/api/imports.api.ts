@@ -103,31 +103,67 @@ function mapBackendImport(importRecord: BackendImport): Import {
 }
 
 /**
+ * Build query params from ImportFilters
+ * Reusable helper for both getImports and getImportsWithPagination
+ */
+function buildImportQueryParams(filters?: ImportFilters): string {
+  if (!filters) return '';
+
+  const params = new URLSearchParams();
+
+  // Basic filters
+  if (filters.status && filters.status !== 'all') {
+    params.append('status', filters.status);
+  }
+  if (filters.supplierId) {
+    params.append('supplierId', filters.supplierId);
+  }
+
+  // Date range filters
+  if (filters.dateFrom) {
+    params.append('dateFrom', filters.dateFrom);
+  }
+  if (filters.dateTo) {
+    params.append('dateTo', filters.dateTo);
+  }
+
+  // Price range filters
+  if (filters.priceMin !== undefined) {
+    params.append('priceMin', filters.priceMin.toString());
+  }
+  if (filters.priceMax !== undefined) {
+    params.append('priceMax', filters.priceMax.toString());
+  }
+
+  // Text search (for supplier name - may need backend aggregation)
+  if (filters.search) {
+    params.append('search', filters.search);
+  }
+
+  // Pagination
+  if (filters.page) {
+    params.append('page', filters.page.toString());
+  }
+  if (filters.limit) {
+    params.append('limit', filters.limit.toString());
+  }
+
+  // Sorting
+  if (filters.sortBy) {
+    params.append('sortBy', filters.sortBy);
+  }
+  if (filters.sortOrder) {
+    params.append('sortOrder', filters.sortOrder);
+  }
+
+  return params.toString();
+}
+
+/**
  * Get all imports with optional filters
  */
 export async function getImports(filters?: ImportFilters): Promise<Import[]> {
-  const params = new URLSearchParams();
-
-  if (filters?.status && filters.status !== 'all') {
-    params.append('status', filters.status);
-  }
-  if (filters?.supplierId) {
-    params.append('supplierId', filters.supplierId);
-  }
-  if (filters?.page) {
-    params.append('page', filters.page.toString());
-  }
-  if (filters?.limit) {
-    params.append('limit', filters.limit.toString());
-  }
-  if (filters?.sortBy) {
-    params.append('sortBy', filters.sortBy);
-  }
-  if (filters?.order) {
-    params.append('order', filters.order);
-  }
-
-  const queryString = params.toString();
+  const queryString = buildImportQueryParams(filters);
   const endpoint = queryString ? `/import?${queryString}` : '/import';
 
   const response = await apiClient.get<{
@@ -142,11 +178,13 @@ export async function getImports(filters?: ImportFilters): Promise<Import[]> {
     : [];
 
   // Client-side search filter (applied after pagination)
+  // NOTE: Once backend supports text search via aggregation, remove this
   if (filters?.search) {
     const search = filters.search.toLowerCase();
     imports = imports.filter(
       (imp) =>
         imp.supplierName?.toLowerCase().includes(search) ||
+        imp.supplierEmail?.toLowerCase().includes(search) ||
         imp.id.toLowerCase().includes(search)
     );
   }
@@ -160,28 +198,7 @@ export async function getImports(filters?: ImportFilters): Promise<Import[]> {
 export async function getImportsWithPagination(
   filters?: ImportFilters
 ): Promise<{ imports: Import[]; pagination: any }> {
-  const params = new URLSearchParams();
-
-  if (filters?.status && filters.status !== 'all') {
-    params.append('status', filters.status);
-  }
-  if (filters?.supplierId) {
-    params.append('supplierId', filters.supplierId);
-  }
-  if (filters?.page) {
-    params.append('page', filters.page.toString());
-  }
-  if (filters?.limit) {
-    params.append('limit', filters.limit.toString());
-  }
-  if (filters?.sortBy) {
-    params.append('sortBy', filters.sortBy);
-  }
-  if (filters?.order) {
-    params.append('order', filters.order);
-  }
-
-  const queryString = params.toString();
+  const queryString = buildImportQueryParams(filters);
   const endpoint = queryString ? `/import?${queryString}` : '/import';
 
   const response = await apiClient.get<{
@@ -190,9 +207,21 @@ export async function getImportsWithPagination(
   }>(endpoint);
 
   const backendImports = response?.items || [];
-  const imports = Array.isArray(backendImports)
+  let imports = Array.isArray(backendImports)
     ? backendImports.map(mapBackendImport)
     : [];
+
+  // Client-side search filter (applied after pagination)
+  // NOTE: Once backend supports text search via aggregation, remove this
+  if (filters?.search) {
+    const search = filters.search.toLowerCase();
+    imports = imports.filter(
+      (imp) =>
+        imp.supplierName?.toLowerCase().includes(search) ||
+        imp.supplierEmail?.toLowerCase().includes(search) ||
+        imp.id.toLowerCase().includes(search)
+    );
+  }
 
   return {
     imports,
@@ -259,6 +288,39 @@ export async function createImport(data: ImportFormData): Promise<Import> {
 
   const backendImport = await apiClient.post<BackendImport>('/import', payload);
   return mapBackendImport(backendImport);
+}
+
+/**
+ * Create multiple imports at once (bulk import creation)
+ */
+export async function createImports(
+  imports: ImportFormData[]
+): Promise<Import[]> {
+  const payload = {
+    imports: imports.map((data) => {
+      const items = data.items.map((item) => ({
+        itemId: item.itemId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.quantity * item.unitPrice,
+      }));
+
+      const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+      return {
+        supplierId: data.supplierId,
+        item: items,
+        totalPrice,
+        status: data.status || 'pending',
+      };
+    }),
+  };
+
+  const backendImports = await apiClient.post<BackendImport[]>(
+    '/import/imports',
+    payload
+  );
+  return backendImports.map(mapBackendImport);
 }
 
 /**

@@ -15,6 +15,8 @@ export interface Business {
   address: string;
   phoneNumber: string;
   email: string;
+  currency: string;
+  timezone: string;
 }
 
 /**
@@ -26,6 +28,8 @@ interface BackendBusiness {
   address: string;
   phoneNumber: string;
   email: string;
+  currency?: string;
+  timezone?: string;
 }
 
 /**
@@ -38,6 +42,8 @@ function mapBackendBusiness(business: BackendBusiness): Business {
     address: business.address,
     phoneNumber: business.phoneNumber,
     email: business.email,
+    currency: business.currency || 'USD',
+    timezone: business.timezone || 'UTC',
   };
 }
 
@@ -63,4 +69,18 @@ export async function getBusinessById(id: string): Promise<Business | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Update business
+ */
+export async function updateBusiness(
+  id: string,
+  data: Partial<Omit<Business, 'id'>>
+): Promise<Business> {
+  const response = await apiClient.put<BackendBusiness>(
+    `/business/${id}`,
+    data
+  );
+  return mapBackendBusiness(response);
 }

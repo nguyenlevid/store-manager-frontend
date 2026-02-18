@@ -21,6 +21,7 @@ interface BackendItem {
   unit: string;
   imageUrl?: string[];
   storeHouse: string | { _id: string; name: string }; // Can be ObjectId or populated
+  lowStockAt?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -64,6 +65,7 @@ function mapBackendItem(item: BackendItem): Item {
             id: item.storeHouse._id || (item.storeHouse as any).id,
             name: item.storeHouse.name,
           }, // Populated
+    lowStockAt: item.lowStockAt ?? 10,
     createdAt: item.createdAt || new Date().toISOString(),
     updatedAt: item.updatedAt || new Date().toISOString(),
   };
@@ -357,6 +359,7 @@ export async function createItem(
     unit: data.unit,
     imageUrl: data.imageUrl,
     storeHouse: data.storeHouse.id, // Send only the ID
+    lowStockAt: data.lowStockAt,
   };
 
   const backendItem = await apiClient.post<BackendItem>('/item', backendData);

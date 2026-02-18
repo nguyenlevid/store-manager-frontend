@@ -24,3 +24,6 @@ export * from './transactions.api';
 
 // Storehouses API (Warehouses)
 export * from './storehouses.api';
+
+// Transfers API (Storehouse Transfers)
+export * from './transfers.api';
