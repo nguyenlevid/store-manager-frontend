@@ -10,6 +10,7 @@ import { createStore } from 'solid-js/store';
 import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardBody, CopyableId } from '@/shared/ui';
+import { can } from '@/shared/stores/permissions.store';
 import {
   getTransactionsWithPagination,
   createTransaction,
@@ -976,22 +977,24 @@ export default function OrdersPage() {
             Track and manage sales transactions with your clients
           </p>
         </div>
-        <Button variant="primary" onClick={openCreateModal}>
-          <svg
-            class="mr-2 h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          New Order
-        </Button>
+        <Show when={can('transactions', 'create')}>
+          <Button variant="primary" onClick={openCreateModal}>
+            <svg
+              class="mr-2 h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            New Order
+          </Button>
+        </Show>
       </div>
 
       {/* Search and Filters */}

@@ -7,6 +7,7 @@ import { AddItemModal } from '@/features/inventory/components/AddItemModal';
 import { getInventoryItemsWithPagination } from '@/features/inventory/api/inventory.api';
 import { getStorehouses } from '@/shared/api/storehouses.api';
 import { getBusiness } from '@/shared/stores/business.store';
+import { can } from '@/shared/stores/permissions.store';
 import { formatCurrency as sharedFormatCurrency } from '@/shared/lib/format';
 import { getInventorySummary } from '@/features/inventory/lib/mock-inventory';
 import type { InventoryFilters } from '@/features/inventory/types/inventory.types';
@@ -97,22 +98,24 @@ export default function InventoryPage() {
             Track and manage your stock levels across all locations
           </p>
         </div>
-        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
-          <svg
-            class="mr-2 h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Add New Item
-        </Button>
+        <Show when={can('items', 'create')}>
+          <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+            <svg
+              class="mr-2 h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add New Item
+          </Button>
+        </Show>
       </div>
 
       {/* Summary Cards */}

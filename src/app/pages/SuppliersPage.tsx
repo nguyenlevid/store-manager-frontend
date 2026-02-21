@@ -9,6 +9,7 @@ import {
 import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
 import { Card, CardBody, CopyableId } from '@/shared/ui';
+import { can } from '@/shared/stores/permissions.store';
 import {
   getSuppliersWithPagination,
   createPartner,
@@ -470,22 +471,24 @@ export default function SuppliersPage() {
             Manage your suppliers (vendors)
           </p>
         </div>
-        <Button variant="primary" onClick={openCreateModal}>
-          <svg
-            class="mr-2 h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          New Supplier
-        </Button>
+        <Show when={can('partners', 'create')}>
+          <Button variant="primary" onClick={openCreateModal}>
+            <svg
+              class="mr-2 h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            New Supplier
+          </Button>
+        </Show>
       </div>
 
       {/* Search */}

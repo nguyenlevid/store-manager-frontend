@@ -16,6 +16,7 @@ const ClientsPage = lazy(() => import('./pages/ClientsPage'));
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'));
 const TransfersPage = lazy(() => import('./pages/TransfersPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const RolesPage = lazy(() => import('./pages/RolesPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 // Protected layout wrapper
@@ -45,6 +46,7 @@ export function AppRouter() {
           <Route path="/clients" component={ClientsPage} />
           <Route path="/suppliers" component={SuppliersPage} />
           <Route path="/settings" component={SettingsPage} />
+          <Route path="/roles" component={RolesPage} />
           <Route path="/profile" component={ProfilePage} />
           <Route path="*" component={NotFoundPage} />
         </Route>
