@@ -13,6 +13,7 @@ import {
   getItemUnits,
 } from '../api/inventory.api';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 import type { Item } from '../types/inventory.types';
 
 interface AddItemModalProps {
@@ -221,10 +222,8 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
 
       props.onSuccess();
       props.onClose();
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to create item';
-      setError(errorMessage);
+    } catch (err: any) {
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

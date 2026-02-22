@@ -17,6 +17,7 @@ import { getBusiness } from '@/shared/stores/business.store';
 import { formatCurrency as sharedFormatCurrency } from '@/shared/lib/format';
 import type { Item } from '../types/inventory.types';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 import type { Storehouse } from '@/shared/types/storehouse.types';
 import { BarcodeLabel } from './BarcodeLabel';
 import { PrintLabelsModal } from './PrintLabelsModal';
@@ -265,9 +266,9 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
       });
 
       props.onSuccess();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update item:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update item');
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

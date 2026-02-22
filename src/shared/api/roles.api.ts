@@ -24,7 +24,6 @@ export interface Permissions {
   storehouses: ResourcePermissions;
   businessSettings: ResourcePermissions;
   users: ResourcePermissions;
-  roles: ResourcePermissions;
 }
 
 export type PermissionResource = keyof Permissions;
@@ -128,4 +127,14 @@ export async function assignStorehousesToUser(
   storeHouseIds: string[]
 ): Promise<void> {
   await apiClient.patch<void>(`/user/${userId}/storehouses`, { storeHouseIds });
+}
+
+/**
+ * Change a user's app role (admin/user). Admin-only.
+ */
+export async function changeUserAppRole(
+  userId: string,
+  appRole: 'admin' | 'user'
+): Promise<void> {
+  await apiClient.patch<void>(`/user/${userId}/app-role`, { appRole });
 }

@@ -37,6 +37,17 @@ const ERROR_MESSAGES: Record<number, string> = {
   4104: 'Session has expired. Please log in again.',
   4303: 'Security token mismatch. Please refresh and try again.',
   4304: "You don't have permission to perform this action.",
+  4305: 'No business associated with your account. Please create or join a business.',
+  4306: 'Invalid or expired verification link. Please sign up again.',
+  4307: 'Your verification link has expired. Please sign up again.',
+  4308: 'Your account has been deactivated. Please contact your administrator.',
+  4309: "You don't have the required permission for this action.",
+  4310: 'You are not assigned to this storehouse.',
+  4311: 'No storehouses are assigned to your account. Contact your administrator.',
+  4312: 'This action requires admin privileges.',
+  4313: 'You cannot perform this action on your own account.',
+  4314: 'This account cannot be modified.',
+  4315: 'The business owner cannot be modified.',
   4290: 'Too many requests. Please try again later.',
 
   // Not found
@@ -49,6 +60,7 @@ const ERROR_MESSAGES: Record<number, string> = {
   4406: 'Import record not found.',
   4410: 'Membership not found.',
   4411: 'Session not found.',
+  4412: 'Role not found.',
 
   // Server errors
   5000: 'Server error occurred. Please try again later.',
@@ -100,14 +112,17 @@ export function getErrorTitle(error: BackendError): string | undefined {
   if (!error.code || typeof error.code !== 'number') return undefined;
 
   // Group errors by type for titles
-  if (error.code >= 4002 && error.code <= 4304) {
+  if (error.code >= 4002 && error.code <= 4315) {
     return 'Authentication Error';
   }
-  if (error.code >= 4400 && error.code <= 4411) {
+  if (error.code >= 4400 && error.code <= 4412) {
     return 'Not Found';
   }
-  if (error.code >= 5000 && error.code <= 6000) {
+  if (error.code >= 5000 && error.code < 6000) {
     return 'Server Error';
+  }
+  if (error.code === 6000) {
+    return 'Email Error';
   }
   if (error.code >= 7000 && error.code <= 7004) {
     return 'Database Error';
@@ -128,7 +143,7 @@ export function getErrorTitle(error: BackendError): string | undefined {
 export function isAuthError(error: BackendError): boolean {
   if (!error.code || typeof error.code !== 'number') return false;
   return (
-    (error.code >= 4002 && error.code <= 4304) ||
+    (error.code >= 4002 && error.code <= 4315) ||
     error.code === 4101 ||
     error.code === 4104
   );

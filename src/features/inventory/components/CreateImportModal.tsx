@@ -8,11 +8,11 @@ import {
 import { Button } from '@/shared/ui/Button';
 import type { Item } from '../types/inventory.types';
 import { createImport } from '@/shared/api/imports.api';
-import { getPartners } from '@/shared/api/partners.api';
+import { getSuppliers } from '@/shared/api/partners.api';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 import { getBusiness } from '@/shared/stores/business.store';
 import { formatCurrency as sharedFormatCurrency } from '@/shared/lib/format';
-import type { Partner } from '@/shared/types/partner.types';
 
 interface CreateImportModalProps {
   item: Item;
@@ -32,7 +32,7 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
   const [error, setError] = createSignal<string | null>(null);
 
   // Resources
-  const [partners] = createResource(() => getPartners());
+  const [suppliers] = createResource(() => getSuppliers());
 
   // Calculated total
   const calculateTotal = () => {
@@ -88,9 +88,9 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
       setUnitPrice('');
 
       props.onSuccess();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create import:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create import');
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -168,6 +168,9 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
                     <p class="mt-1 text-base font-semibold text-text-primary">
                       {props.item.name}
                     </p>
+                    <p class="mt-0.5 text-xs text-text-muted">
+                      {props.item.storeHouse?.name ?? 'No storehouse'}
+                    </p>
                     <Show when={props.item.description}>
                       <p class="mt-0.5 text-sm text-text-secondary">
                         {props.item.description}
@@ -196,11 +199,11 @@ export const CreateImportModal: Component<CreateImportModalProps> = (props) => {
                   class="mt-1 block w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-border-focus focus:outline-none focus:ring-1 focus:ring-border-focus"
                 >
                   <option value="">No supplier / Other</option>
-                  <Show when={partners()}>
-                    <For each={partners()}>
-                      {(partner: Partner) => (
-                        <option value={partner.id}>
-                          {partner.partnerName}
+                  <Show when={suppliers()}>
+                    <For each={suppliers()}>
+                      {(supplier) => (
+                        <option value={supplier.id}>
+                          {supplier.partnerName}
                         </option>
                       )}
                     </For>

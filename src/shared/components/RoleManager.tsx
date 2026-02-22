@@ -16,8 +16,9 @@ import {
   type Permissions,
   type PermissionResource,
 } from '@/shared/api/roles.api';
-import { can } from '@/shared/stores/permissions.store';
+import { isAdmin } from '@/shared/stores/permissions.store';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage, getErrorTitle } from '@/shared/lib/error-messages';
 
 /**
  * Human-readable labels for permission resources
@@ -31,7 +32,6 @@ const RESOURCE_LABELS: Record<PermissionResource, string> = {
   storehouses: 'Storehouses',
   businessSettings: 'Business Settings',
   users: 'Users',
-  roles: 'Roles',
 };
 
 /**
@@ -46,7 +46,6 @@ const RESOURCE_ACTIONS: Record<PermissionResource, string[]> = {
   storehouses: ['create', 'update', 'delete'],
   businessSettings: ['update'],
   users: ['create', 'update', 'delete'],
-  roles: ['create', 'update', 'delete', 'execute'],
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -81,7 +80,6 @@ function emptyPermissions(): Permissions {
     storehouses: { create: false, update: false, delete: false },
     businessSettings: { update: false },
     users: { create: false, update: false, delete: false },
-    roles: { create: false, update: false, delete: false, execute: false },
   };
 }
 
@@ -177,7 +175,9 @@ export default function RoleManager() {
       cancel();
       refetch();
     } catch (err: any) {
-      notificationStore.error(err?.message || 'Failed to save role');
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -194,7 +194,9 @@ export default function RoleManager() {
       setDeletingRole(null);
       refetch();
     } catch (err: any) {
-      notificationStore.error(err?.message || 'Failed to delete role');
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsDeleting(false);
     }
@@ -228,7 +230,7 @@ export default function RoleManager() {
                 Define permission sets that can be assigned to users
               </p>
             </div>
-            <Show when={mode() === 'list' && can('roles', 'create')}>
+            <Show when={mode() === 'list' && isAdmin()}>
               <Button variant="primary" onClick={startCreate}>
                 + New Role
               </Button>
@@ -412,7 +414,7 @@ export default function RoleManager() {
                           </div>
                         </div>
                         <div class="ml-3 flex gap-1.5">
-                          <Show when={can('roles', 'update')}>
+                          <Show when={isAdmin()}>
                             <button
                               onClick={() => startEdit(role)}
                               class="hover:bg-bg-subtle rounded-md p-1.5 text-text-secondary hover:text-text-primary"
@@ -433,7 +435,7 @@ export default function RoleManager() {
                               </svg>
                             </button>
                           </Show>
-                          <Show when={can('roles', 'delete')}>
+                          <Show when={isAdmin()}>
                             <button
                               onClick={() => setDeletingRole(role)}
                               class="hover:bg-status-error/10 hover:text-status-error rounded-md p-1.5 text-text-secondary"

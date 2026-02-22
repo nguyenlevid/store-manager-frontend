@@ -1,11 +1,8 @@
-import { createSignal, createEffect } from 'solid-js';
+import { createSignal, createEffect, Show, onCleanup } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { Card, CardHeader, CardBody, Input, Button } from '@/shared/ui';
-import { signup } from '../api/auth.api';
-import type { AppError } from '@/shared/types/api.types';
 import {
-  setUser,
-  setStatus,
+  signupUser,
   user,
   status,
   isInitialized,
@@ -23,41 +20,39 @@ export default function SignupPage() {
     }
   });
 
-  // Calculate max birth date (must be at least 18 years old)
-  const getMaxBirthDate = () => {
-    const today = new Date();
-    const maxDate = new Date(
-      today.getFullYear() - 18,
-      today.getMonth(),
-      today.getDate()
-    );
-    return maxDate.toISOString().split('T')[0];
-  };
-
-  const [formData, setFormData] = createSignal({
-    email: '',
-    password: '',
-    name: '',
-    phoneNumber: '',
-    birthDate: '',
-    business: '', // Business ID - optional
-  });
+  const [email, setEmail] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [emailSent, setEmailSent] = createSignal(false);
+  const [resendCooldown, setResendCooldown] = createSignal(0);
 
-  const updateField = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  // Cooldown timer for resend button
+  let cooldownTimer: ReturnType<typeof setInterval> | undefined;
+
+  const startCooldown = () => {
+    setResendCooldown(60);
+    cooldownTimer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownTimer);
+          cooldownTimer = undefined;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
+
+  onCleanup(() => {
+    if (cooldownTimer) clearInterval(cooldownTimer);
+  });
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      const data = formData();
-
-      // Basic validation
-      if (!data.email || !data.password || !data.name || !data.birthDate) {
-        notificationStore.warning('Please fill in all required fields', {
+      if (!email().trim()) {
+        notificationStore.warning('Please enter your email address', {
           title: 'Validation Error',
           duration: 5000,
         });
@@ -65,91 +60,57 @@ export default function SignupPage() {
         return;
       }
 
-      if (data.password.length < 8) {
-        notificationStore.warning(
-          'Password must be at least 8 characters long',
-          {
-            title: 'Validation Error',
-            duration: 5000,
-          }
-        );
-        setIsSubmitting(false);
-        return;
+      const result = await signupUser({ email: email().trim() });
+
+      if (result.success) {
+        setEmailSent(true);
+        startCooldown();
+        notificationStore.success('Check your inbox for a verification link!', {
+          title: 'Email Sent',
+          duration: 8000,
+        });
+      } else {
+        const errorMessage = result.error
+          ? getErrorMessage(result.error)
+          : 'Signup failed. Please try again.';
+
+        notificationStore.error(errorMessage, {
+          title: 'Signup Failed',
+          duration: 6000,
+        });
       }
-
-      // Password strength validation to match backend
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
-      if (!passwordRegex.test(data.password)) {
-        notificationStore.warning(
-          'Password must contain at least one uppercase letter, one lowercase letter, and one number',
-          {
-            title: 'Validation Error',
-            duration: 5000,
-          }
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Age validation (must be at least 18 years old)
-      const birthDate = new Date(data.birthDate);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      const dayDiff = today.getDate() - birthDate.getDate();
-
-      if (
-        age < 18 ||
-        (age === 18 && (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)))
-      ) {
-        notificationStore.warning(
-          'You must be at least 18 years old to sign up',
-          {
-            title: 'Validation Error',
-            duration: 5000,
-          }
-        );
-        setIsSubmitting(false);
-        return;
-      }
-
-      const response = await signup({
-        email: data.email,
-        password: data.password,
-        name: data.name,
-        phoneNumber: data.phoneNumber || undefined,
-        birthDate: data.birthDate,
-        business: data.business || undefined,
-      });
-
-      // Update session store with the logged-in user
-      setUser(response.user);
-      setStatus('authenticated');
-
-      // Show success notification
-      notificationStore.success(
-        'Your account has been created successfully! Redirecting...',
-        {
-          title: 'Signup Successful',
-          duration: 5000,
-        }
-      );
-
-      // Signup successful - navigate to home after brief delay
-      setTimeout(() => {
-        navigate('/');
-      }, 1500);
     } catch (err: any) {
-      const appError = err as AppError;
-      const errorMessage = getErrorMessage(appError);
-
-      notificationStore.error(errorMessage, {
+      notificationStore.error('An unexpected error occurred', {
         title: 'Signup Failed',
         duration: 6000,
       });
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleResend = async () => {
+    setIsSubmitting(true);
+    const result = await signupUser({ email: email().trim() });
+
+    if (result.success) {
+      startCooldown();
+      notificationStore.success('Verification email resent!', {
+        title: 'Email Resent',
+        duration: 5000,
+      });
+    } else {
+      const errorMessage = result.error
+        ? getErrorMessage(result.error)
+        : 'Failed to resend email. Please try again.';
+
+      notificationStore.error(errorMessage, {
+        title: 'Resend Failed',
+        duration: 6000,
+      });
+    }
+
+    setIsSubmitting(false);
   };
 
   return (
@@ -159,93 +120,89 @@ export default function SignupPage() {
           <CardHeader>
             <h1 class="text-2xl font-bold text-gray-900">Create Account</h1>
             <p class="mt-1 text-sm text-gray-600">
-              Sign up to get started with Store Manager
+              Enter your email to get started with Store Manager
             </p>
           </CardHeader>
           <CardBody>
-            <form onSubmit={handleSubmit} class="space-y-4">
-              <Input
-                type="text"
-                label="Full Name"
-                placeholder="John Doe"
-                value={formData().name}
-                onInput={(e) => updateField('name', e.currentTarget.value)}
-                required
-                disabled={isSubmitting()}
-              />
+            <Show
+              when={!emailSent()}
+              fallback={
+                <div class="space-y-4 text-center">
+                  <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                    <svg
+                      class="h-8 w-8 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <h2 class="text-lg font-semibold text-gray-900">
+                    Check your email
+                  </h2>
+                  <p class="text-sm text-gray-600">
+                    We sent a verification link to{' '}
+                    <span class="font-medium text-gray-900">{email()}</span>.
+                    <br />
+                    Click the link to complete your registration.
+                  </p>
+                  <p class="text-xs text-gray-500">
+                    The link expires in 72 hours.
+                  </p>
+                  <div class="pt-2">
+                    <button
+                      type="button"
+                      class="text-sm font-medium text-blue-600 hover:text-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={handleResend}
+                      disabled={isSubmitting() || resendCooldown() > 0}
+                    >
+                      {isSubmitting()
+                        ? 'Sending...'
+                        : resendCooldown() > 0
+                          ? `Resend available in ${resendCooldown()}s`
+                          : "Didn't get the email? Resend"}
+                    </button>
+                  </div>
+                </div>
+              }
+            >
+              <form onSubmit={handleSubmit} class="space-y-4">
+                <Input
+                  type="email"
+                  label="Email"
+                  placeholder="you@example.com"
+                  value={email()}
+                  onInput={(e) => setEmail(e.currentTarget.value)}
+                  required
+                  disabled={isSubmitting()}
+                />
 
-              <Input
-                type="email"
-                label="Email"
-                placeholder="you@example.com"
-                value={formData().email}
-                onInput={(e) => updateField('email', e.currentTarget.value)}
-                required
-                disabled={isSubmitting()}
-              />
-
-              <Input
-                type="password"
-                label="Password"
-                placeholder="••••••••"
-                value={formData().password}
-                onInput={(e) => updateField('password', e.currentTarget.value)}
-                required
-                disabled={isSubmitting()}
-                helperText="Must be at least 8 characters with uppercase, lowercase, and number"
-              />
-
-              <Input
-                type="date"
-                label="Birth Date"
-                value={formData().birthDate}
-                onInput={(e) => updateField('birthDate', e.currentTarget.value)}
-                required
-                disabled={isSubmitting()}
-                max={getMaxBirthDate()}
-                helperText="You must be at least 18 years old"
-              />
-
-              <Input
-                type="text"
-                label="Business ID (Optional)"
-                placeholder="Enter your business ID"
-                value={formData().business}
-                onInput={(e) => updateField('business', e.currentTarget.value)}
-                disabled={isSubmitting()}
-                helperText="Optional: Contact your admin if you have a business ID"
-              />
-
-              <Input
-                type="tel"
-                label="Phone Number (Optional)"
-                placeholder="+1234567890"
-                value={formData().phoneNumber}
-                onInput={(e) =>
-                  updateField('phoneNumber', e.currentTarget.value)
-                }
-                disabled={isSubmitting()}
-              />
-
-              <Button
-                type="submit"
-                fullWidth
-                disabled={isSubmitting()}
-                variant="primary"
-              >
-                {isSubmitting() ? 'Creating account...' : 'Sign Up'}
-              </Button>
-
-              <div class="text-center text-sm text-gray-600">
-                Already have an account?{' '}
-                <a
-                  href="/login"
-                  class="font-medium text-blue-600 hover:text-blue-500"
+                <Button
+                  type="submit"
+                  fullWidth
+                  disabled={isSubmitting()}
+                  variant="primary"
                 >
-                  Sign in
-                </a>
-              </div>
-            </form>
+                  {isSubmitting() ? 'Sending...' : 'Continue with Email'}
+                </Button>
+
+                <div class="text-center text-sm text-gray-600">
+                  Already have an account?{' '}
+                  <a
+                    href="/login"
+                    class="font-medium text-blue-600 hover:text-blue-500"
+                  >
+                    Sign in
+                  </a>
+                </div>
+              </form>
+            </Show>
           </CardBody>
         </Card>
       </div>

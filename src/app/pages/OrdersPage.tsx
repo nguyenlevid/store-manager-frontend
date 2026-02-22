@@ -9,7 +9,7 @@ import {
 import { createStore } from 'solid-js/store';
 import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
-import { Card, CardBody, CopyableId } from '@/shared/ui';
+import { Card, CardBody, CopyableId, ItemSelect } from '@/shared/ui';
 import { can } from '@/shared/stores/permissions.store';
 import {
   getTransactionsWithPagination,
@@ -24,6 +24,7 @@ import {
 } from '@/shared/api';
 import { getClients, getInventoryItems } from '@/shared/api';
 import { apiClient } from '@/shared/lib/api-client';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 import {
   formatCurrency as sharedFormatCurrency,
   formatDate as sharedFormatDate,
@@ -774,7 +775,7 @@ export default function OrdersPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to create order');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -805,7 +806,7 @@ export default function OrdersPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to update order');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -822,7 +823,7 @@ export default function OrdersPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to delete order');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -834,7 +835,7 @@ export default function OrdersPage() {
       await markItemsDelivered(transactionId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to mark items as delivered');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -845,7 +846,7 @@ export default function OrdersPage() {
       });
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to unmark items as delivered');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -854,7 +855,7 @@ export default function OrdersPage() {
       await completeTransactionPayment(transactionId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to complete payment');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -865,7 +866,7 @@ export default function OrdersPage() {
       });
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to unmark payment');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -874,7 +875,7 @@ export default function OrdersPage() {
       await completeTransaction(transactionId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to complete order');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -883,7 +884,7 @@ export default function OrdersPage() {
       await cancelTransaction(transactionId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to cancel order');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -892,7 +893,7 @@ export default function OrdersPage() {
       await markTransactionPending(transactionId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to mark as pending');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -927,7 +928,7 @@ export default function OrdersPage() {
       }
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Action failed');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -1291,7 +1292,7 @@ export default function OrdersPage() {
               fallback={
                 <div class="py-12 text-center">
                   <p class="text-status-error-text">
-                    Error: {transactions.error?.message}
+                    Error: {getErrorMessage(transactions.error)}
                   </p>
                   <Button
                     variant="primary"
@@ -1640,28 +1641,16 @@ export default function OrdersPage() {
                     {(item, index) => (
                       <div class="flex gap-2 rounded-lg border border-border-default p-3">
                         <div class="flex-1">
-                          <select
+                          <ItemSelect
+                            items={items() ?? []}
                             value={item().itemId}
-                            onInput={(e) =>
-                              updateFormItem(
-                                index,
-                                'itemId',
-                                e.currentTarget.value
-                              )
+                            onChange={(id) =>
+                              updateFormItem(index, 'itemId', id)
                             }
+                            placeholder="Select item..."
+                            showStock
                             required
-                            class="w-full rounded border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-accent-primary focus:outline-none"
-                          >
-                            <option value="">Select item...</option>
-                            <For each={items()}>
-                              {(inventoryItem) => (
-                                <option value={inventoryItem.id}>
-                                  {inventoryItem.name} (Stock:{' '}
-                                  {inventoryItem.quantity})
-                                </option>
-                              )}
-                            </For>
-                          </select>
+                          />
                         </div>
                         <div class="w-24">
                           <input

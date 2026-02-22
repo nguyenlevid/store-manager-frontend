@@ -20,6 +20,7 @@ import {
 } from '@/shared/api/storehouses.api';
 import type { Storehouse } from '@/shared/types/storehouse.types';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage, getErrorTitle } from '@/shared/lib/error-messages';
 
 /**
  * Common currencies with labels
@@ -143,7 +144,9 @@ export default function SettingsPage() {
       // Re-initialize form from the now-updated store
       setBizInitialized(false);
     } catch (err: any) {
-      notificationStore.error(err?.message || 'Failed to save');
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsSavingBiz(false);
     }
@@ -196,7 +199,9 @@ export default function SettingsPage() {
       resetAddForm();
       refetchStorehouses();
     } catch (err: any) {
-      notificationStore.error(err?.message || 'Failed to create storehouse');
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsAddingSh(false);
     }
@@ -225,7 +230,9 @@ export default function SettingsPage() {
       setEditingSh(null);
       refetchStorehouses();
     } catch (err: any) {
-      notificationStore.error(err?.message || 'Failed to update storehouse');
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsSavingSh(false);
     }
@@ -241,7 +248,9 @@ export default function SettingsPage() {
       setDeletingSh(null);
       refetchStorehouses();
     } catch (err: any) {
-      notificationStore.error(err?.message || 'Failed to delete storehouse');
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsDeletingSh(false);
     }

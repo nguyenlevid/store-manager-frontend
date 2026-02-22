@@ -1,6 +1,7 @@
 import { createSignal, Show } from 'solid-js';
 import { Input, Button, Alert } from '@/shared/ui';
 import type { Profile, UpdateProfileRequest } from '../types/profile.types';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 
 interface ProfileEditFormProps {
   profile: Profile;
@@ -27,8 +28,8 @@ export function ProfileEditForm(props: ProfileEditFormProps) {
         phone: phone() || undefined,
         department: department() || undefined,
       });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save changes');
+    } catch (err: any) {
+      setError(getErrorMessage(err));
     }
   };
 

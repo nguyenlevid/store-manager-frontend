@@ -17,6 +17,7 @@ export interface Business {
   email: string;
   currency: string;
   timezone: string;
+  creator: string;
 }
 
 /**
@@ -30,6 +31,7 @@ interface BackendBusiness {
   email: string;
   currency?: string;
   timezone?: string;
+  creator?: string;
 }
 
 /**
@@ -44,6 +46,7 @@ function mapBackendBusiness(business: BackendBusiness): Business {
     email: business.email,
     currency: business.currency || 'USD',
     timezone: business.timezone || 'UTC',
+    creator: business.creator || '',
   };
 }
 
@@ -82,5 +85,20 @@ export async function updateBusiness(
     `/business/${id}`,
     data
   );
+  return mapBackendBusiness(response);
+}
+
+/**
+ * Create a new business (onboarding)
+ */
+export async function createBusiness(data: {
+  name: string;
+  address: string;
+  phoneNumber: string;
+  email?: string;
+  currency?: string;
+  timezone?: string;
+}): Promise<Business> {
+  const response = await apiClient.post<BackendBusiness>('/business', data);
   return mapBackendBusiness(response);
 }

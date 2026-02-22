@@ -5,7 +5,11 @@ import {
   clearPermissions,
 } from '@/shared/stores/permissions.store';
 import type { User, SessionStatus } from '../types/auth.types';
-import type { SignupRequest } from '../types/auth.types';
+import type {
+  SignupRequest,
+  CompleteRegistrationRequest,
+  CompleteInvitationRequest,
+} from '../types/auth.types';
 import * as authApi from '../api/auth.api';
 import type { AppError } from '@/shared/types/api.types';
 import { normalizeError } from '@/shared/lib/errors';
@@ -172,7 +176,8 @@ export function updateAccessToken(token: string): void {
 }
 
 /**
- * Sign up a new user
+ * Sign up with email only (Step 1)
+ * Sends verification email — does NOT log the user in
  */
 export async function signupUser(
   data: SignupRequest
@@ -180,10 +185,57 @@ export async function signupUser(
   setError(null);
 
   try {
-    const response = await authApi.signup(data);
+    await authApi.signup(data);
+    return { success: true };
+  } catch (err) {
+    const appError = normalizeError(err);
+    setError(appError);
+    return { success: false, error: appError };
+  }
+}
+
+/**
+ * Complete registration (Step 2 — onboarding wizard)
+ * Creates user + business + storehouse and logs them in
+ */
+export async function completeRegistrationUser(
+  data: CompleteRegistrationRequest
+): Promise<{ success: boolean; error?: AppError }> {
+  setError(null);
+
+  try {
+    const response = await authApi.completeRegistration(data);
     setUser(response.user);
     setAccessToken(response.accessToken);
     setStatus('authenticated');
+    // Load business data and permissions into shared stores
+    fetchBusiness(true);
+    fetchPermissions(true);
+    return { success: true };
+  } catch (err) {
+    const appError = normalizeError(err);
+    setError(appError);
+    return { success: false, error: appError };
+  }
+}
+
+/**
+ * Complete invitation (invited users)
+ * Joins existing business and logs them in
+ */
+export async function completeInvitationUser(
+  data: CompleteInvitationRequest
+): Promise<{ success: boolean; error?: AppError }> {
+  setError(null);
+
+  try {
+    const response = await authApi.completeInvitation(data);
+    setUser(response.user);
+    setAccessToken(response.accessToken);
+    setStatus('authenticated');
+    // Load business data and permissions into shared stores
+    fetchBusiness(true);
+    fetchPermissions(true);
     return { success: true };
   } catch (err) {
     const appError = normalizeError(err);

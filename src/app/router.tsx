@@ -16,8 +16,17 @@ const ClientsPage = lazy(() => import('./pages/ClientsPage'));
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'));
 const TransfersPage = lazy(() => import('./pages/TransfersPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
-const RolesPage = lazy(() => import('./pages/RolesPage'));
+const TeamManagementPage = lazy(() => import('./pages/TeamManagementPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const OnboardingPage = lazy(
+  () => import('@/features/auth/pages/OnboardingPage')
+);
+const ForgotPasswordPage = lazy(
+  () => import('@/features/auth/pages/ForgotPasswordPage')
+);
+const ResetPasswordPage = lazy(
+  () => import('@/features/auth/pages/ResetPasswordPage')
+);
 
 // Protected layout wrapper
 const ProtectedLayout: Component<ParentProps> = (props) => {
@@ -35,6 +44,9 @@ export function AppRouter() {
         {/* Public routes */}
         <Route path="/login" component={LoginPage} />
         <Route path="/signup" component={SignupPage} />
+        <Route path="/onboarding" component={OnboardingPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password" component={ResetPasswordPage} />
 
         {/* Protected routes with layout */}
         <Route path="/" component={ProtectedLayout}>
@@ -46,7 +58,7 @@ export function AppRouter() {
           <Route path="/clients" component={ClientsPage} />
           <Route path="/suppliers" component={SuppliersPage} />
           <Route path="/settings" component={SettingsPage} />
-          <Route path="/roles" component={RolesPage} />
+          <Route path="/team" component={TeamManagementPage} />
           <Route path="/profile" component={ProfilePage} />
           <Route path="*" component={NotFoundPage} />
         </Route>

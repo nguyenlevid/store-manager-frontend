@@ -9,7 +9,7 @@ import {
 import { createStore } from 'solid-js/store';
 import { useSearchParams } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
-import { Card, CardBody, CopyableId } from '@/shared/ui';
+import { Card, CardBody, CopyableId, ItemSelect } from '@/shared/ui';
 import { can } from '@/shared/stores/permissions.store';
 import {
   getImportsWithPagination,
@@ -24,6 +24,7 @@ import {
 } from '@/shared/api';
 import { getSuppliers, getInventoryItems } from '@/shared/api';
 import { apiClient } from '@/shared/lib/api-client';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 import {
   formatCurrency as sharedFormatCurrency,
   formatDate as sharedFormatDate,
@@ -711,7 +712,7 @@ export default function ImportsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to create import');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -742,7 +743,7 @@ export default function ImportsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to update import');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -759,7 +760,7 @@ export default function ImportsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to delete import');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -771,7 +772,7 @@ export default function ImportsPage() {
       await markItemsReceived(importId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to mark items as received');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -782,7 +783,7 @@ export default function ImportsPage() {
       });
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to unmark items as received');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -791,7 +792,7 @@ export default function ImportsPage() {
       await completeImportPayment(importId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to complete payment');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -802,7 +803,7 @@ export default function ImportsPage() {
       });
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to unmark payment');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -811,7 +812,7 @@ export default function ImportsPage() {
       await completeImport(importId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to complete import');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -820,7 +821,7 @@ export default function ImportsPage() {
       await cancelImport(importId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to cancel import');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -829,7 +830,7 @@ export default function ImportsPage() {
       await markImportPending(importId);
       await refetch();
     } catch (err: any) {
-      alert(err.message || 'Failed to mark as pending');
+      alert(getErrorMessage(err));
     }
   };
 
@@ -864,7 +865,7 @@ export default function ImportsPage() {
       }
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Action failed');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -1487,7 +1488,7 @@ export default function ImportsPage() {
             >
               <div class="py-12 text-center">
                 <p class="text-status-error-text">
-                  Error: {imports.error?.message}
+                  Error: {getErrorMessage(imports.error)}
                 </p>
                 <Button
                   variant="primary"
@@ -1564,29 +1565,18 @@ export default function ImportsPage() {
                         <div class="flex items-start gap-2 rounded-lg border border-border-default p-3">
                           <div class="flex-1 space-y-2">
                             {/* Item selector */}
-                            <select
-                              required
-                              value={item().itemId}
-                              onChange={(e) =>
-                                updateFormItem(
-                                  index,
-                                  'itemId',
-                                  e.currentTarget.value
-                                )
-                              }
-                              class="w-full rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-sm text-text-primary focus:border-transparent focus:ring-2 focus:ring-accent-primary"
-                            >
-                              <option value="">Select item...</option>
-                              <Show when={!items.loading && items()}>
-                                <For each={items()}>
-                                  {(itemOption) => (
-                                    <option value={itemOption.id}>
-                                      {itemOption.name}
-                                    </option>
-                                  )}
-                                </For>
-                              </Show>
-                            </select>
+                            <Show when={!items.loading && items()}>
+                              <ItemSelect
+                                items={items()!}
+                                value={item().itemId}
+                                onChange={(id) =>
+                                  updateFormItem(index, 'itemId', id)
+                                }
+                                placeholder="Select item..."
+                                showStock
+                                required
+                              />
+                            </Show>
 
                             <div class="grid grid-cols-2 gap-2">
                               {/* Quantity */}

@@ -4,6 +4,7 @@ import { Input } from '@/shared/ui/Input';
 import { Alert } from '@/shared/ui/Alert';
 import type { Item, StockAdjustmentRequest } from '../types/inventory.types';
 import { adjustStock } from '../api/inventory.api';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 
 interface StockAdjustmentModalProps {
   item: Item;
@@ -69,8 +70,8 @@ export const StockAdjustmentModal: Component<StockAdjustmentModalProps> = (
         props.onComplete();
         setSuccess(false);
       }, 800);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to adjust stock');
+    } catch (err: any) {
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

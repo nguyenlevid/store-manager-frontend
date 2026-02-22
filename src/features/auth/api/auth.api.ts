@@ -2,13 +2,23 @@ import { apiClient } from '@/shared/lib/api-client';
 import type {
   LoginRequest,
   SignupRequest,
+  SignupResponse,
+  CompleteRegistrationRequest,
+  CompleteRegistrationResponse,
+  CompleteInvitationRequest,
+  CompleteInvitationResponse,
+  VerifyTokenResponse,
   AuthResponse,
   User,
   Session,
   ForgotPasswordRequest,
   ResetPasswordRequest,
 } from '../types/auth.types';
-import { AuthResponseSchema } from '../types/auth.types';
+import {
+  AuthResponseSchema,
+  CompleteRegistrationResponseSchema,
+  CompleteInvitationResponseSchema,
+} from '../types/auth.types';
 import { USE_MOCK_API, MOCK_USER, mockDelay } from '@/shared/lib/mock-data';
 
 /**
@@ -19,22 +29,67 @@ import { USE_MOCK_API, MOCK_USER, mockDelay } from '@/shared/lib/mock-data';
  */
 
 /**
- * Sign up a new user
+ * Sign up with email only (Step 1)
+ * Sends verification email to the user
  */
-export async function signup(data: SignupRequest): Promise<AuthResponse> {
+export async function signup(data: SignupRequest): Promise<SignupResponse> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    return { message: 'Verification email sent. Please check your inbox.' };
+  }
+
+  const response = await apiClient.post<SignupResponse>('/auth/signup', data);
+  return response;
+}
+
+/**
+ * Verify a token before showing the onboarding wizard
+ */
+export async function verifyToken(token: string): Promise<VerifyTokenResponse> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    return { email: 'test@example.com', accountType: 'self_registered' };
+  }
+
+  const response = await apiClient.get<VerifyTokenResponse>(
+    `/auth/verify-token/${token}`
+  );
+  return response;
+}
+
+/**
+ * Complete registration (Step 2 — onboarding wizard submission)
+ * Creates User + Business + StoreHouse and returns tokens
+ */
+export async function completeRegistration(
+  data: CompleteRegistrationRequest
+): Promise<CompleteRegistrationResponse> {
   if (USE_MOCK_API) {
     await mockDelay();
     return {
       user: MOCK_USER,
+      business: {
+        _id: 'mock_business_id',
+        name: 'Mock Business',
+        address: '123 Mock St',
+        phoneNumber: '+1234567890',
+        creator: MOCK_USER._id,
+      },
+      storeHouse: {
+        _id: 'mock_storehouse_id',
+        address: '123 Mock St',
+        business: 'mock_business_id',
+      },
       accessToken: 'mock_access_token',
       csrfToken: 'mock_csrf_token',
     };
   }
 
-  const response = await apiClient.post<AuthResponse>('/auth/signup', data);
-  const validated = AuthResponseSchema.parse(response);
-
-  // Tokens are managed by session store, not stored here
+  const response = await apiClient.post<CompleteRegistrationResponse>(
+    '/auth/complete-registration',
+    data
+  );
+  const validated = CompleteRegistrationResponseSchema.parse(response);
   return validated;
 }
 
@@ -158,33 +213,70 @@ export async function revokeSession(
 }
 
 /**
- * Request password reset (NOT IMPLEMENTED ON BACKEND YET)
+ * Request password reset email
  */
 export async function forgotPassword(
-  _data: ForgotPasswordRequest
+  data: ForgotPasswordRequest
 ): Promise<{ message: string }> {
   if (USE_MOCK_API) {
     await mockDelay();
     return { message: 'Password reset email sent' };
   }
 
-  // TODO: Implement on backend
-  throw new Error('Password reset not implemented yet');
+  const response = await apiClient.post<{ message: string }>(
+    '/auth/forgot-password',
+    data
+  );
+  return response;
 }
 
 /**
- * Reset password with token (NOT IMPLEMENTED ON BACKEND YET)
+ * Reset password with token
  */
 export async function resetPassword(
-  _data: ResetPasswordRequest
+  data: ResetPasswordRequest
 ): Promise<{ message: string }> {
   if (USE_MOCK_API) {
     await mockDelay();
     return { message: 'Password reset successfully' };
   }
 
-  // TODO: Implement on backend
-  throw new Error('Password reset not implemented yet');
+  const response = await apiClient.post<{ message: string }>(
+    '/auth/reset-password',
+    { token: data.token, password: data.password }
+  );
+  return response;
+}
+
+/**
+ * Complete invitation (invited users — personal details only)
+ * Creates User joining existing business
+ */
+export async function completeInvitation(
+  data: CompleteInvitationRequest
+): Promise<CompleteInvitationResponse> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    return {
+      user: MOCK_USER,
+      business: {
+        _id: 'mock_business_id',
+        name: 'Mock Business',
+        address: '123 Mock St',
+        phoneNumber: '+1234567890',
+        creator: MOCK_USER._id,
+      },
+      accessToken: 'mock_access_token',
+      csrfToken: 'mock_csrf_token',
+    };
+  }
+
+  const response = await apiClient.post<CompleteInvitationResponse>(
+    '/auth/complete-invitation',
+    data
+  );
+  const validated = CompleteInvitationResponseSchema.parse(response);
+  return validated;
 }
 
 /**

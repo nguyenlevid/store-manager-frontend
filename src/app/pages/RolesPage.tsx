@@ -12,15 +12,19 @@
 import { createSignal, createResource, Show, For } from 'solid-js';
 import { Card, CardBody, CardHeader, Button } from '@/shared/ui';
 import RoleManager from '@/shared/components/RoleManager';
-import { can } from '@/shared/stores/permissions.store';
+import { isAdmin } from '@/shared/stores/permissions.store';
+import { getBusiness } from '@/shared/stores/business.store';
+import { getUser } from '@/features/auth/store/session.store';
 import { notificationStore } from '@/shared/stores/notification.store';
 import { getBusinessUsers, type BusinessUser } from '@/shared/api/users.api';
 import {
   getRoles,
   assignRolesToUser,
   assignStorehousesToUser,
+  changeUserAppRole,
 } from '@/shared/api/roles.api';
 import { getStorehouses } from '@/shared/api/storehouses.api';
+import { getErrorMessage, getErrorTitle } from '@/shared/lib/error-messages';
 
 type Tab = 'roles' | 'team';
 
@@ -177,7 +181,9 @@ function TeamPanel() {
       setEditingUserId(null);
       refetchUsers();
     } catch (err: any) {
-      notificationStore.error(err?.message || 'Failed to update user access');
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -200,9 +206,54 @@ function TeamPanel() {
     );
   }
 
-  const canAssignRoles = () => can('roles', 'execute');
-  const canAssignStorehouses = () => can('users', 'update');
-  const canEdit = () => canAssignRoles() || canAssignStorehouses();
+  const canAssignRoles = () => isAdmin();
+  const canAssignStorehouses = () => isAdmin();
+  const canEdit = () => isAdmin();
+
+  // OG (business creator) check
+  const businessCreator = () => getBusiness()?.creator || '';
+  const currentUserId = () => getUser()?._id || '';
+  const isOG = () => currentUserId() === businessCreator();
+
+  // Can the current user edit this specific team member's roles/storehouses?
+  // Only meaningful for regular users (admins/devs have full access already)
+  function canEditUser(user: BusinessUser): boolean {
+    if (!canEdit()) return false;
+    // Only user-role accounts need role/storehouse assignment
+    if (user.appRole !== 'user') return false;
+    // Cannot edit yourself
+    if (user._id === currentUserId()) return false;
+    return true;
+  }
+
+  // Can promote/demote this user's app role?
+  function canChangeAppRole(user: BusinessUser): boolean {
+    if (!isAdmin()) return false;
+    if (user._id === currentUserId()) return false;
+    if (user.appRole === 'dev') return false;
+    if (user._id === businessCreator()) return false;
+    // Only OG/dev can demote admins
+    if (user.appRole === 'admin') {
+      return isOG() || getUser()?.appRole === 'dev';
+    }
+    return true;
+  }
+
+  // Handle promote/demote
+  async function handleToggleAppRole(user: BusinessUser) {
+    const newRole = user.appRole === 'admin' ? 'user' : 'admin';
+    try {
+      await changeUserAppRole(user._id, newRole);
+      notificationStore.success(
+        `${user.name} ${newRole === 'admin' ? 'promoted to admin' : 'demoted to user'}`
+      );
+      refetchUsers();
+    } catch (err: any) {
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
+    }
+  }
 
   return (
     <Card>
@@ -258,81 +309,112 @@ function TeamPanel() {
                                 </p>
                               </div>
                               {roleBadge(user.appRole)}
+                              <Show when={user._id === businessCreator()}>
+                                <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                  Owner
+                                </span>
+                              </Show>
                             </div>
 
-                            {/* Current assignments */}
+                            {/* Current assignments — only meaningful for regular users */}
                             <div class="mt-2 flex flex-wrap gap-x-6 gap-y-1 pl-10">
-                              <div class="text-xs text-text-secondary">
-                                <span class="font-medium">Roles: </span>
-                                <Show
-                                  when={user.accessRole.length > 0}
-                                  fallback={
-                                    <span class="italic text-text-muted">
-                                      None
-                                    </span>
-                                  }
-                                >
-                                  <For each={user.accessRole}>
-                                    {(roleId, i) => (
-                                      <>
-                                        <span class="text-text-primary">
-                                          {roleName(roleId)}
-                                        </span>
-                                        {i() < user.accessRole.length - 1 &&
-                                          ', '}
-                                      </>
-                                    )}
-                                  </For>
-                                </Show>
-                              </div>
-                              <div class="text-xs text-text-secondary">
-                                <span class="font-medium">Storehouses: </span>
-                                <Show
-                                  when={user.storeHouses.length > 0}
-                                  fallback={
-                                    <span class="italic text-text-muted">
-                                      All (admin)
-                                    </span>
-                                  }
-                                >
-                                  <For each={user.storeHouses}>
-                                    {(shId, i) => (
-                                      <>
-                                        <span class="text-text-primary">
-                                          {storehouseName(shId)}
-                                        </span>
-                                        {i() < user.storeHouses.length - 1 &&
-                                          ', '}
-                                      </>
-                                    )}
-                                  </For>
-                                </Show>
-                              </div>
+                              <Show
+                                when={user.appRole === 'user'}
+                                fallback={
+                                  <span class="text-xs italic text-text-muted">
+                                    Full access (admin privileges)
+                                  </span>
+                                }
+                              >
+                                <div class="text-xs text-text-secondary">
+                                  <span class="font-medium">Roles: </span>
+                                  <Show
+                                    when={user.accessRole.length > 0}
+                                    fallback={
+                                      <span class="italic text-text-muted">
+                                        None
+                                      </span>
+                                    }
+                                  >
+                                    <For each={user.accessRole}>
+                                      {(roleId, i) => (
+                                        <>
+                                          <span class="text-text-primary">
+                                            {roleName(roleId)}
+                                          </span>
+                                          {i() < user.accessRole.length - 1 &&
+                                            ', '}
+                                        </>
+                                      )}
+                                    </For>
+                                  </Show>
+                                </div>
+                                <div class="text-xs text-text-secondary">
+                                  <span class="font-medium">Storehouses: </span>
+                                  <Show
+                                    when={user.storeHouses.length > 0}
+                                    fallback={
+                                      <span class="text-status-error italic">
+                                        None assigned
+                                      </span>
+                                    }
+                                  >
+                                    <For each={user.storeHouses}>
+                                      {(shId, i) => (
+                                        <>
+                                          <span class="text-text-primary">
+                                            {storehouseName(shId)}
+                                          </span>
+                                          {i() < user.storeHouses.length - 1 &&
+                                            ', '}
+                                        </>
+                                      )}
+                                    </For>
+                                  </Show>
+                                </div>
+                              </Show>
                             </div>
                           </div>
 
-                          {/* Edit button — only for regular users, and only if current user can assign */}
-                          <Show when={user.appRole === 'user' && canEdit()}>
-                            <button
-                              onClick={() => startEdit(user)}
-                              class="hover:bg-bg-subtle ml-3 rounded-md p-1.5 text-text-secondary hover:text-text-primary"
-                              title="Edit access"
-                            >
-                              <svg
-                                class="h-4 w-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                          {/* Edit button — only if current user can edit this user */}
+                          <div class="ml-3 flex items-center gap-1.5">
+                            <Show when={canChangeAppRole(user)}>
+                              <button
+                                onClick={() => handleToggleAppRole(user)}
+                                class="hover:bg-bg-subtle rounded-md px-2 py-1 text-xs font-medium text-text-secondary hover:text-text-primary"
+                                title={
+                                  user.appRole === 'admin'
+                                    ? 'Demote to user'
+                                    : 'Promote to admin'
+                                }
                               >
-                                <path
-                                  stroke-linecap="round"
-                                  stroke-linejoin="round"
-                                  stroke-width="2"
-                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                />
-                              </svg>
-                            </button>
-                          </Show>
+                                {user.appRole === 'admin'
+                                  ? 'Demote'
+                                  : 'Promote'}
+                              </button>
+                            </Show>
+                            <Show when={canEditUser(user)}>
+                              <button
+                                onClick={() => startEdit(user)}
+                                class="hover:bg-bg-subtle rounded-md p-1.5 text-text-secondary hover:text-text-primary"
+                                title="Edit access"
+                              >
+                                <svg
+                                  class="h-4 w-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                  />
+                                </svg>
+                              </button>
+                            </Show>
+                          </div>
                         </div>
                       </div>
                     }

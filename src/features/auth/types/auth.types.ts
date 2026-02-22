@@ -30,16 +30,115 @@ export interface LoginRequest {
 }
 
 /**
- * Signup request
+ * Signup request (email-only, Step 1)
  */
 export interface SignupRequest {
   email: string;
-  password: string;
-  name: string;
-  phoneNumber?: string;
-  birthDate: string;
-  business?: string;
 }
+
+/**
+ * Signup response (no user is created yet)
+ */
+export interface SignupResponse {
+  message: string;
+}
+
+/**
+ * Verify token response
+ */
+export interface VerifyTokenResponse {
+  email: string;
+  accountType: 'self_registered' | 'invited' | 'deactivated';
+  businessName?: string;
+}
+
+/**
+ * Complete invitation request (invited users — personal details only)
+ */
+export interface CompleteInvitationRequest {
+  token: string;
+  user: {
+    name: string;
+    password: string;
+    phoneNumber?: string;
+    birthDate: string;
+  };
+}
+
+/**
+ * Complete invitation response
+ */
+export const CompleteInvitationResponseSchema = z.object({
+  user: UserSchema,
+  business: z.object({
+    _id: z.string(),
+    name: z.string(),
+    address: z.string(),
+    phoneNumber: z.string(),
+    email: z.string().optional(),
+    creator: z.string(),
+  }),
+  accessToken: z.string(),
+  csrfToken: z.string(),
+});
+
+export type CompleteInvitationResponse = z.infer<
+  typeof CompleteInvitationResponseSchema
+>;
+
+/**
+ * Complete registration request (onboarding wizard, Step 2)
+ */
+export interface CompleteRegistrationRequest {
+  token: string;
+  user: {
+    name: string;
+    password: string;
+    phoneNumber?: string;
+    birthDate: string;
+  };
+  business: {
+    name: string;
+    address: string;
+    phoneNumber: string;
+    email?: string;
+  };
+  storeHouse: {
+    name?: string;
+    address: string;
+    phoneNumber?: string;
+    email?: string;
+  };
+}
+
+/**
+ * Complete registration response (user + business + storehouse + tokens)
+ */
+export const CompleteRegistrationResponseSchema = z.object({
+  user: UserSchema,
+  business: z.object({
+    _id: z.string(),
+    name: z.string(),
+    address: z.string(),
+    phoneNumber: z.string(),
+    email: z.string().optional(),
+    creator: z.string(),
+  }),
+  storeHouse: z.object({
+    _id: z.string(),
+    address: z.string(),
+    name: z.string().optional(),
+    phoneNumber: z.string().optional(),
+    email: z.string().optional(),
+    business: z.string(),
+  }),
+  accessToken: z.string(),
+  csrfToken: z.string(),
+});
+
+export type CompleteRegistrationResponse = z.infer<
+  typeof CompleteRegistrationResponseSchema
+>;
 
 /**
  * Auth response with tokens
@@ -82,5 +181,5 @@ export interface ForgotPasswordRequest {
 
 export interface ResetPasswordRequest {
   token: string;
-  newPassword: string;
+  password: string;
 }

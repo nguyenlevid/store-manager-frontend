@@ -16,6 +16,7 @@ export interface BusinessUser {
   appRole: 'dev' | 'admin' | 'user';
   accessRole: string[]; // role IDs
   storeHouses: string[]; // storehouse IDs
+  isActive?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -5,6 +5,7 @@ import { ProfileCard } from '../components/ProfileCard';
 import { ProfileInfo } from '../components/ProfileInfo';
 import { ProfileEditForm } from '../components/ProfileEditForm';
 import type { UpdateProfileRequest } from '../types/profile.types';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 
 export default function ProfilePage() {
   const [isEditing, setIsEditing] = createSignal(false);
@@ -42,9 +43,7 @@ export default function ProfilePage() {
       >
         <Show when={profile.error}>
           <Alert variant="error" title="Error loading profile">
-            {profile.error instanceof Error
-              ? profile.error.message
-              : 'Failed to load profile'}
+            {getErrorMessage(profile.error)}
           </Alert>
         </Show>
 

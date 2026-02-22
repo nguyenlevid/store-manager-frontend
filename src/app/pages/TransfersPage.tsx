@@ -17,6 +17,7 @@ import {
 } from '@/shared/api/transfers.api';
 import type { Transfer } from '@/shared/types/transfer.types';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage, getErrorTitle } from '@/shared/lib/error-messages';
 
 type StatusFilter = 'all' | 'pending' | 'completed' | 'cancelled';
 
@@ -72,9 +73,9 @@ export default function TransfersPage() {
       refetch();
       setSelectedTransfer(null);
     } catch (err: any) {
-      notificationStore.error(
-        err?.response?.data?.message || err?.message || 'Action failed'
-      );
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsProcessing(false);
       setConfirmAction(null);
@@ -89,9 +90,9 @@ export default function TransfersPage() {
       refetch();
       setSelectedTransfer(null);
     } catch (err: any) {
-      notificationStore.error(
-        err?.response?.data?.message || err?.message || 'Delete failed'
-      );
+      notificationStore.error(getErrorMessage(err), {
+        title: getErrorTitle(err) || 'Error',
+      });
     } finally {
       setIsProcessing(false);
       setConfirmAction(null);

@@ -14,6 +14,8 @@ export { ToastContainer } from './ToastContainer';
 export { CopyableId } from './CopyableId';
 export { ReceiptPrint } from './ReceiptPrint';
 export { FloatingActionButton } from './FloatingActionButton';
+export { ItemSelect } from './ItemSelect';
+export type { ItemSelectProps } from './ItemSelect';
 export type {
   ReceiptItem,
   ReceiptTransaction,

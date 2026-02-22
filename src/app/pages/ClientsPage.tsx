@@ -19,6 +19,7 @@ import {
 } from '@/shared/api';
 import { getBusiness } from '@/shared/stores/business.store';
 import type { Partner } from '@/shared/types/partner.types';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 
 type ModalMode = 'create' | 'edit' | 'delete' | 'detail' | null;
 
@@ -383,7 +384,7 @@ export default function ClientsPage() {
       setDetailData(transactions);
     } catch (err: any) {
       console.error('Error loading details:', err);
-      setError(err.message || 'Failed to load details');
+      setError(getErrorMessage(err));
     } finally {
       setLoadingDetails(false);
     }
@@ -410,7 +411,7 @@ export default function ClientsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to create partner');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -429,7 +430,7 @@ export default function ClientsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to update partner');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -447,7 +448,7 @@ export default function ClientsPage() {
       await refetch();
       closeModal();
     } catch (err: any) {
-      setError(err.message || 'Failed to delete partner');
+      setError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -675,7 +676,7 @@ export default function ClientsPage() {
             >
               <div class="py-12 text-center">
                 <p class="text-status-error-text">
-                  Error: {partners.error?.message}
+                  Error: {getErrorMessage(partners.error)}
                 </p>
                 <Button
                   onClick={() => refetch()}

@@ -16,6 +16,7 @@ import { Button } from '@/shared/ui/Button';
 import { getStorehouses } from '@/shared/api/storehouses.api';
 import { createTransfer } from '@/shared/api/transfers.api';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage } from '@/shared/lib/error-messages';
 import type { Item } from '../types/inventory.types';
 
 interface TransferStockModalProps {
@@ -82,8 +83,7 @@ export const TransferStockModal: Component<TransferStockModalProps> = (
       props.onSuccess();
       props.onClose();
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message || err?.message || 'Transfer failed';
+      const msg = getErrorMessage(err);
       setError(msg);
     } finally {
       setIsSubmitting(false);

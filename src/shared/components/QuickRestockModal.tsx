@@ -17,6 +17,7 @@ import type { Partner } from '@/shared/types/partner.types';
 import type { ImportFormData } from '@/shared/types/import.types';
 import { createImports } from '@/shared/api/imports.api';
 import { notificationStore } from '@/shared/stores/notification.store';
+import { getErrorMessage, getErrorTitle } from '@/shared/lib/error-messages';
 
 interface RestockItem {
   item: Item;
@@ -146,9 +147,11 @@ export const QuickRestockModal: Component<QuickRestockModalProps> = (props) => {
       );
       props.onSuccess?.();
       props.onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create imports:', error);
-      notificationStore.error('Failed to create imports');
+      notificationStore.error(getErrorMessage(error), {
+        title: getErrorTitle(error) || 'Error',
+      });
     } finally {
       setIsSubmitting(false);
     }

@@ -217,14 +217,14 @@ async function request<T>(
     }
 
     // Handle 403 - might be CSRF error, refresh token and retry once
+    // Parse body once so both CSRF check and generic handler can use it
+    let prefetchedErrorData: unknown = undefined;
     if (response.status === 403 && isStateMutating && !skipCsrf) {
-      const errorData = (await safeParseJson(response)) as Record<
-        string,
-        unknown
-      > | null;
+      prefetchedErrorData = await safeParseJson(response);
+      const topLevel = prefetchedErrorData as Record<string, unknown> | null;
       const isCsrfError =
-        errorData?.['code'] === 'CSRF_ERROR' ||
-        (errorData?.['message'] as string)?.includes('CSRF');
+        topLevel?.['code'] === 'CSRF_ERROR' ||
+        (topLevel?.['message'] as string)?.includes('CSRF');
 
       if (isCsrfError) {
         // CSRF cookie will be refreshed by backend on retry
@@ -235,7 +235,11 @@ async function request<T>(
 
     // Handle other errors
     if (!response.ok) {
-      const errorData = await safeParseJson(response);
+      // Reuse body if already parsed by the 403 CSRF check above
+      const errorData =
+        prefetchedErrorData !== undefined
+          ? prefetchedErrorData
+          : await safeParseJson(response);
 
       // Extract error from backend format: { isOk: false, data: { rcode } }
       // Backend only sends error code for security, no messages
