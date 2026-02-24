@@ -10,7 +10,7 @@ export function ProfileCard(props: ProfileCardProps) {
   return (
     <Card>
       <CardHeader>
-        <h2 class="text-lg font-semibold text-gray-900">{props.title}</h2>
+        <h2 class="text-lg font-semibold text-text-primary">{props.title}</h2>
       </CardHeader>
       <CardBody>{props.children}</CardBody>
     </Card>

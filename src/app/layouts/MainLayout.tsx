@@ -1,6 +1,6 @@
 import type { JSX } from 'solid-js';
 import { A } from '@solidjs/router';
-import { createSignal, Show } from 'solid-js';
+import { createSignal, onCleanup, Show } from 'solid-js';
 import { getUser, logoutUser } from '@/features/auth/store/session.store';
 import { toggleTheme, getCurrentTheme, type ThemeName } from '@/theme';
 import { FloatingActionButton } from '@/shared/ui';
@@ -38,8 +38,9 @@ export function MainLayout(props: MainLayoutProps) {
     }
   };
 
-  // Add click listener when dropdown is open
+  // Add click listener and clean up on component disposal
   document.addEventListener('click', handleClickOutside);
+  onCleanup(() => document.removeEventListener('click', handleClickOutside));
 
   return (
     <div class="min-h-screen bg-bg-app">

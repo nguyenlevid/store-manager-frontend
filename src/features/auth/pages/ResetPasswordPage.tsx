@@ -80,27 +80,27 @@ export default function ResetPasswordPage() {
 
   if (noToken()) {
     return (
-      <div class="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+      <div class="flex min-h-screen items-center justify-center bg-bg-app px-4">
         <div class="w-full max-w-md">
           <Card>
             <CardHeader>
-              <h1 class="text-2xl font-bold text-gray-900">Invalid Link</h1>
+              <h1 class="text-2xl font-bold text-text-primary">Invalid Link</h1>
             </CardHeader>
             <CardBody>
-              <p class="mb-4 text-sm text-gray-600">
+              <p class="mb-4 text-sm text-text-secondary">
                 This password reset link is invalid or missing a token.
               </p>
               <div class="flex gap-3">
                 <a
                   href="/forgot-password"
-                  class="font-medium text-blue-600 hover:text-blue-500"
+                  class="font-medium text-text-link hover:text-text-link-hover"
                 >
                   Request a new link
                 </a>
-                <span class="text-gray-300">|</span>
+                <span class="text-text-muted">|</span>
                 <a
                   href="/login"
-                  class="font-medium text-blue-600 hover:text-blue-500"
+                  class="font-medium text-text-link hover:text-text-link-hover"
                 >
                   Back to Sign In
                 </a>
@@ -113,19 +113,19 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div class="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+    <div class="flex min-h-screen items-center justify-center bg-bg-app px-4">
       <div class="w-full max-w-md">
         <Card>
           <CardHeader>
-            <h1 class="text-2xl font-bold text-gray-900">Reset Password</h1>
-            <p class="mt-1 text-sm text-gray-600">
+            <h1 class="text-2xl font-bold text-text-primary">Reset Password</h1>
+            <p class="mt-1 text-sm text-text-secondary">
               Enter your new password below
             </p>
           </CardHeader>
           <CardBody>
             <form onSubmit={handleSubmit} class="space-y-4">
               {error() && (
-                <div class="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                <div class="rounded-lg bg-accent-danger-subtle p-3 text-sm text-accent-danger">
                   {error()}
                 </div>
               )}
@@ -159,10 +159,10 @@ export default function ResetPasswordPage() {
                 {isSubmitting() ? 'Resetting...' : 'Reset Password'}
               </Button>
 
-              <div class="mt-4 text-center text-sm text-gray-600">
+              <div class="mt-4 text-center text-sm text-text-secondary">
                 <a
                   href="/login"
-                  class="font-medium text-blue-600 hover:text-blue-500"
+                  class="font-medium text-text-link hover:text-text-link-hover"
                 >
                   Back to Sign In
                 </a>

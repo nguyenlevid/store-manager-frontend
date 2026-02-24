@@ -3,6 +3,7 @@ import { lazy, type Component, type ParentProps } from 'solid-js';
 import { MainLayout } from './layouts/MainLayout';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { ToastContainer } from '@/shared/ui';
+import { AppErrorBoundary } from '@/shared/components/ErrorBoundary';
 
 // Lazy load pages
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'));
@@ -39,7 +40,7 @@ const ProtectedLayout: Component<ParentProps> = (props) => {
 
 export function AppRouter() {
   return (
-    <>
+    <AppErrorBoundary>
       <Router>
         {/* Public routes */}
         <Route path="/login" component={LoginPage} />
@@ -66,6 +67,6 @@ export function AppRouter() {
 
       {/* Global notification container */}
       <ToastContainer />
-    </>
+    </AppErrorBoundary>
   );
 }

@@ -30,11 +30,6 @@ interface BackendItem {
  * Map backend item to frontend Item type
  */
 function mapBackendItem(item: BackendItem): Item {
-  console.log('🔄 Mapping item:', JSON.stringify(item, null, 2));
-  console.log('🔑 Item keys:', Object.keys(item));
-  console.log('🆔 _id value:', item._id);
-  console.log('🆔 id value:', (item as any).id);
-
   if (!item) {
     throw new Error('Item is null or undefined');
   }
@@ -43,7 +38,6 @@ function mapBackendItem(item: BackendItem): Item {
   const itemId = item._id || (item as any).id;
 
   if (!itemId) {
-    console.error('❌ Item missing both _id and id:', item);
     throw new Error('Item missing _id or id field');
   }
 
@@ -132,12 +126,10 @@ export async function getInventoryItems(
   const queryString = params.toString();
   const endpoint = queryString ? `/item?${queryString}` : '/item';
 
-  console.log('📦 Fetching items from:', endpoint);
   const response = await apiClient.get<{
     items: BackendItem[];
     pagination: any;
   }>(endpoint);
-  console.log('📦 Backend response:', response);
 
   // Extract items from paginated response
   const backendItems = response?.items || [];
@@ -145,7 +137,6 @@ export async function getInventoryItems(
     ? backendItems.map(mapBackendItem)
     : [];
 
-  console.log('📦 Mapped items:', mappedItems);
   return mappedItems;
 }
 

@@ -300,10 +300,10 @@ export default function OnboardingPage() {
           <div
             class={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
               s === step()
-                ? 'bg-blue-600 text-white'
+                ? 'bg-accent-primary text-text-inverse'
                 : s < step()
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-200 text-gray-500'
+                  ? 'bg-accent-success text-text-inverse'
+                  : 'bg-bg-surface-subtle text-text-muted'
             }`}
           >
             {s < step() ? (
@@ -327,7 +327,7 @@ export default function OnboardingPage() {
           {s < 3 && (
             <div
               class={`mx-1 h-0.5 w-8 ${
-                s < step() ? 'bg-green-500' : 'bg-gray-200'
+                s < step() ? 'bg-accent-success' : 'bg-bg-surface-subtle'
               }`}
             />
           )}
@@ -339,15 +339,17 @@ export default function OnboardingPage() {
   const stepLabels = ['Personal Details', 'Business Info', 'Storehouse'];
 
   return (
-    <div class="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8">
+    <div class="flex min-h-screen items-center justify-center bg-bg-app px-4 py-8">
       <div class="w-full max-w-lg">
         {/* Loading state */}
         <Show when={loading()}>
           <Card>
             <CardBody>
               <div class="flex flex-col items-center gap-3 py-8">
-                <div class="h-8 w-8 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
-                <p class="text-sm text-gray-600">Verifying your link...</p>
+                <div class="h-8 w-8 animate-spin rounded-full border-4 border-accent-primary-subtle border-t-accent-primary" />
+                <p class="text-sm text-text-secondary">
+                  Verifying your link...
+                </p>
               </div>
             </CardBody>
           </Card>
@@ -358,9 +360,9 @@ export default function OnboardingPage() {
           <Card>
             <CardBody>
               <div class="space-y-4 py-8 text-center">
-                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent-danger-subtle">
                   <svg
-                    class="h-8 w-8 text-red-600"
+                    class="h-8 w-8 text-accent-danger"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -373,17 +375,17 @@ export default function OnboardingPage() {
                     />
                   </svg>
                 </div>
-                <h2 class="text-lg font-semibold text-gray-900">
+                <h2 class="text-lg font-semibold text-text-primary">
                   Invalid Verification Link
                 </h2>
-                <p class="text-sm text-gray-600">{tokenError()}</p>
+                <p class="text-sm text-text-secondary">{tokenError()}</p>
                 <div class="flex flex-col items-center gap-2">
                   <Button variant="primary" onClick={() => navigate('/signup')}>
                     Sign Up Again
                   </Button>
                   <a
                     href="/login"
-                    class="text-sm font-medium text-blue-600 hover:text-blue-500"
+                    class="text-sm font-medium text-text-link hover:text-text-link-hover"
                   >
                     Already have an account? Sign in
                   </a>
@@ -400,12 +402,12 @@ export default function OnboardingPage() {
             <Match when={accountType() === 'invited'}>
               <Card>
                 <CardHeader>
-                  <h1 class="text-2xl font-bold text-gray-900">
+                  <h1 class="text-2xl font-bold text-text-primary">
                     Join {businessName_invite() || 'Your Team'}
                   </h1>
-                  <p class="mt-1 text-sm text-gray-600">
+                  <p class="mt-1 text-sm text-text-secondary">
                     Complete your profile for{' '}
-                    <span class="font-medium text-gray-900">
+                    <span class="font-medium text-text-primary">
                       {tokenEmail()}
                     </span>
                   </p>
@@ -469,11 +471,11 @@ export default function OnboardingPage() {
                     </Button>
                   </div>
 
-                  <div class="mt-4 text-center text-sm text-gray-600">
+                  <div class="mt-4 text-center text-sm text-text-secondary">
                     Already have an account?{' '}
                     <a
                       href="/login"
-                      class="font-medium text-blue-600 hover:text-blue-500"
+                      class="font-medium text-text-link hover:text-text-link-hover"
                     >
                       Sign in
                     </a>
@@ -486,19 +488,19 @@ export default function OnboardingPage() {
             <Match when={accountType() === 'self_registered'}>
               <Card>
                 <CardHeader>
-                  <h1 class="text-2xl font-bold text-gray-900">
+                  <h1 class="text-2xl font-bold text-text-primary">
                     Complete Your Registration
                   </h1>
-                  <p class="mt-1 text-sm text-gray-600">
+                  <p class="mt-1 text-sm text-text-secondary">
                     Setting up account for{' '}
-                    <span class="font-medium text-gray-900">
+                    <span class="font-medium text-text-primary">
                       {tokenEmail()}
                     </span>
                   </p>
                 </CardHeader>
                 <CardBody>
                   <StepIndicator />
-                  <p class="mb-4 text-center text-sm font-medium text-gray-700">
+                  <p class="mb-4 text-center text-sm font-medium text-text-secondary">
                     Step {step()}: {stepLabels[step() - 1]}
                   </p>
 
@@ -700,11 +702,11 @@ export default function OnboardingPage() {
                     </Match>
                   </Switch>
 
-                  <div class="mt-4 text-center text-sm text-gray-600">
+                  <div class="mt-4 text-center text-sm text-text-secondary">
                     Already have an account?{' '}
                     <a
                       href="/login"
-                      class="font-medium text-blue-600 hover:text-blue-500"
+                      class="font-medium text-text-link hover:text-text-link-hover"
                     >
                       Sign in
                     </a>

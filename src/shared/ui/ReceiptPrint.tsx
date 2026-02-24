@@ -127,10 +127,10 @@ export function ReceiptPrint(props: ReceiptPrintProps) {
             {local.business!.name}
           </div>
           <Show when={local.business!.address}>
-            <div class="text-gray-600">{local.business!.address}</div>
+            <div class="text-text-secondary">{local.business!.address}</div>
           </Show>
           <Show when={local.business!.phone || local.business!.email}>
-            <div class="text-gray-600">
+            <div class="text-text-secondary">
               {local.business!.phone}
               {local.business!.phone && local.business!.email ? ' • ' : ''}
               {local.business!.email}
@@ -165,7 +165,7 @@ export function ReceiptPrint(props: ReceiptPrintProps) {
                 class={
                   local.mode === 'compact'
                     ? 'mt-2 border-t border-dashed border-gray-400 py-1 font-bold'
-                    : 'mt-4 border-t-2 border-gray-300 bg-gray-100 px-2 py-2 font-bold'
+                    : 'mt-4 border-t-2 border-border-default bg-bg-surface-subtle px-2 py-2 font-bold'
                 }
               >
                 {transaction.date}

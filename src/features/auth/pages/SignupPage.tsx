@@ -114,12 +114,12 @@ export default function SignupPage() {
   };
 
   return (
-    <div class="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-8">
+    <div class="flex min-h-screen items-center justify-center bg-bg-app px-4 py-8">
       <div class="w-full max-w-md">
         <Card>
           <CardHeader>
-            <h1 class="text-2xl font-bold text-gray-900">Create Account</h1>
-            <p class="mt-1 text-sm text-gray-600">
+            <h1 class="text-2xl font-bold text-text-primary">Create Account</h1>
+            <p class="mt-1 text-sm text-text-secondary">
               Enter your email to get started with Store Manager
             </p>
           </CardHeader>
@@ -128,9 +128,9 @@ export default function SignupPage() {
               when={!emailSent()}
               fallback={
                 <div class="space-y-4 text-center">
-                  <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                  <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent-success-subtle">
                     <svg
-                      class="h-8 w-8 text-green-600"
+                      class="h-8 w-8 text-accent-success"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -143,22 +143,23 @@ export default function SignupPage() {
                       />
                     </svg>
                   </div>
-                  <h2 class="text-lg font-semibold text-gray-900">
+                  <h2 class="text-lg font-semibold text-text-primary">
                     Check your email
                   </h2>
-                  <p class="text-sm text-gray-600">
+                  <p class="text-sm text-text-secondary">
                     We sent a verification link to{' '}
-                    <span class="font-medium text-gray-900">{email()}</span>.
+                    <span class="font-medium text-text-primary">{email()}</span>
+                    .
                     <br />
                     Click the link to complete your registration.
                   </p>
-                  <p class="text-xs text-gray-500">
+                  <p class="text-xs text-text-muted">
                     The link expires in 72 hours.
                   </p>
                   <div class="pt-2">
                     <button
                       type="button"
-                      class="text-sm font-medium text-blue-600 hover:text-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      class="text-sm font-medium text-text-link hover:text-text-link-hover disabled:cursor-not-allowed disabled:opacity-50"
                       onClick={handleResend}
                       disabled={isSubmitting() || resendCooldown() > 0}
                     >
@@ -192,11 +193,11 @@ export default function SignupPage() {
                   {isSubmitting() ? 'Sending...' : 'Continue with Email'}
                 </Button>
 
-                <div class="text-center text-sm text-gray-600">
+                <div class="text-center text-sm text-text-secondary">
                   Already have an account?{' '}
                   <a
                     href="/login"
-                    class="font-medium text-blue-600 hover:text-blue-500"
+                    class="font-medium text-text-link hover:text-text-link-hover"
                   >
                     Sign in
                   </a>

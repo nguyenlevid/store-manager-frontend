@@ -101,11 +101,11 @@ export const BarcodeLabel: Component<BarcodeLabelProps> = (props) => {
 
       {/* Meta row: unit + storehouse */}
       <div
-        class={`flex items-center gap-2 text-gray-600 ${textClasses().meta}`}
+        class={`flex items-center gap-2 text-text-secondary ${textClasses().meta}`}
       >
         <span class="font-medium">Unit: {props.unit}</span>
         <Show when={props.storehouse}>
-          <span class="text-gray-400">·</span>
+          <span class="text-text-muted">·</span>
           <span class="truncate" title={props.storehouse}>
             {props.storehouse}
           </span>

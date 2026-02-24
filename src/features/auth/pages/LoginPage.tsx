@@ -58,12 +58,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div class="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+    <div class="flex min-h-screen items-center justify-center bg-bg-app px-4">
       <div class="w-full max-w-md">
         <Card>
           <CardHeader>
-            <h1 class="text-2xl font-bold text-gray-900">Sign In</h1>
-            <p class="mt-1 text-sm text-gray-600">
+            <h1 class="text-2xl font-bold text-text-primary">Sign In</h1>
+            <p class="mt-1 text-sm text-text-secondary">
               Enter your credentials to access your account
             </p>
           </CardHeader>
@@ -101,17 +101,17 @@ export default function LoginPage() {
               <div class="mt-2 text-right text-sm">
                 <a
                   href="/forgot-password"
-                  class="font-medium text-blue-600 hover:text-blue-500"
+                  class="font-medium text-text-link hover:text-text-link-hover"
                 >
                   Forgot password?
                 </a>
               </div>
 
-              <div class="mt-4 text-center text-sm text-gray-600">
+              <div class="mt-4 text-center text-sm text-text-secondary">
                 Don't have an account?{' '}
                 <a
                   href="/signup"
-                  class="font-medium text-blue-600 hover:text-blue-500"
+                  class="font-medium text-text-link hover:text-text-link-hover"
                 >
                   Sign up
                 </a>

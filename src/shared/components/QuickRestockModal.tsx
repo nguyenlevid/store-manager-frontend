@@ -239,9 +239,9 @@ export const QuickRestockModal: Component<QuickRestockModalProps> = (props) => {
                         <div class="bg-bg-hover/50 border-b border-border-default px-4 py-3">
                           <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
+                              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-primary-subtle">
                                 <svg
-                                  class="h-5 w-5 text-purple-600"
+                                  class="h-5 w-5 text-accent-primary"
                                   fill="none"
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"

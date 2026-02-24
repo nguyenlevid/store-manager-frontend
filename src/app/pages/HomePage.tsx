@@ -142,9 +142,9 @@ export default function HomePage() {
                   </p>
                 </Show>
               </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-accent-primary-subtle">
                 <svg
-                  class="h-6 w-6 text-blue-600"
+                  class="h-6 w-6 text-accent-primary"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -179,9 +179,9 @@ export default function HomePage() {
                   </p>
                 </Show>
               </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100">
+              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-accent-warning-subtle">
                 <svg
-                  class="h-6 w-6 text-orange-600"
+                  class="h-6 w-6 text-accent-warning"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -216,9 +216,9 @@ export default function HomePage() {
                   </p>
                 </Show>
               </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100">
+              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-accent-success-subtle">
                 <svg
-                  class="h-6 w-6 text-green-600"
+                  class="h-6 w-6 text-accent-success"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -253,9 +253,9 @@ export default function HomePage() {
                   </p>
                 </Show>
               </div>
-              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100">
+              <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-status-info-bg">
                 <svg
-                  class="h-6 w-6 text-purple-600"
+                  class="h-6 w-6 text-status-info-text"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

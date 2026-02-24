@@ -13,6 +13,7 @@ import type {
   Session,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ChangePasswordRequest,
 } from '../types/auth.types';
 import {
   AuthResponseSchema,
@@ -295,5 +296,23 @@ export async function getCsrfToken(): Promise<{
     headerName?: string;
   }>('/auth/csrf');
   // CSRF token is already set in cookie by backend
+  return response;
+}
+
+/**
+ * Change password (authenticated user)
+ */
+export async function changePassword(
+  data: ChangePasswordRequest
+): Promise<{ message: string }> {
+  if (USE_MOCK_API) {
+    await mockDelay();
+    return { message: 'Password changed successfully' };
+  }
+
+  const response = await apiClient.post<{ message: string }>(
+    '/auth/change-password',
+    data
+  );
   return response;
 }

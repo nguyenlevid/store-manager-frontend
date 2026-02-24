@@ -183,3 +183,12 @@ export interface ResetPasswordRequest {
   token: string;
   password: string;
 }
+
+/**
+ * Change password request (authenticated)
+ */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  logoutOtherSessions?: boolean;
+}

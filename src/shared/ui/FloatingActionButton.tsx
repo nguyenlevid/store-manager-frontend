@@ -44,7 +44,7 @@ export function FloatingActionButton() {
           />
         </svg>
       ),
-      color: 'bg-green-500 hover:bg-green-600',
+      color: 'bg-accent-success hover:bg-accent-success-hover',
       action: () => navigate('/orders?action=create'),
     },
     {
@@ -64,7 +64,7 @@ export function FloatingActionButton() {
           />
         </svg>
       ),
-      color: 'bg-blue-500 hover:bg-blue-600',
+      color: 'bg-accent-primary hover:bg-accent-primary-hover',
       action: () => navigate('/inventory?action=create'),
     },
     {
@@ -84,7 +84,7 @@ export function FloatingActionButton() {
           />
         </svg>
       ),
-      color: 'bg-orange-500 hover:bg-orange-600',
+      color: 'bg-accent-warning hover:bg-accent-warning-hover',
       action: () => navigate('/clients?action=create'),
     },
     {
@@ -104,7 +104,7 @@ export function FloatingActionButton() {
           />
         </svg>
       ),
-      color: 'bg-purple-500 hover:bg-purple-600',
+      color: 'bg-accent-secondary hover:bg-accent-secondary-hover',
       action: () => navigate('/suppliers?action=create'),
     },
   ];
