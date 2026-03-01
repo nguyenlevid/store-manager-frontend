@@ -729,7 +729,10 @@ export const ViewItemDetailsModal: Component<ViewItemDetailsModalProps> = (
                       <Show when={storehouses()}>
                         <For each={storehouses()}>
                           {(sh: Storehouse) => (
-                            <option value={sh.id}>{sh.name}</option>
+                            <option value={sh.id} disabled={sh.isLocked}>
+                              {sh.isLocked ? '🔒 ' : ''}
+                              {sh.name}
+                            </option>
                           )}
                         </For>
                       </Show>

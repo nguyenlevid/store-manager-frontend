@@ -50,6 +50,14 @@ const ERROR_MESSAGES: Record<number, string> = {
   4315: 'The business owner cannot be modified.',
   4290: 'Too many requests. Please try again later.',
 
+  // Subscription
+  4020: 'A subscription is required. Please set up your plan.',
+  4021: 'Your subscription has expired. Please renew to continue.',
+  4022: 'You have reached the limit for your current plan. Upgrade for more capacity.',
+  4023: 'This feature is not available on your current plan. Please upgrade.',
+  4024: "Cannot downgrade — your current usage exceeds the target plan's limits.",
+  4025: 'This storehouse is locked due to a plan downgrade. Upgrade your plan to unlock it.',
+
   // Not found
   4400: 'User not found.',
   4401: 'Business not found.',
@@ -61,6 +69,7 @@ const ERROR_MESSAGES: Record<number, string> = {
   4410: 'Membership not found.',
   4411: 'Session not found.',
   4412: 'Role not found.',
+  4413: 'Cannot delete storehouse — it still has items. Move or delete the items first.',
 
   // Server errors
   5000: 'Server error occurred. Please try again later.',
@@ -92,13 +101,15 @@ export function getErrorMessage(error: BackendError | string): string {
   }
 
   // Look up error code in our mapping
-  if (
-    error.code !== undefined &&
-    typeof error.code === 'number' &&
-    error.code in ERROR_MESSAGES
-  ) {
-    const message = ERROR_MESSAGES[error.code];
-    return message || 'An unexpected error occurred. Please try again.';
+  if (error.code !== undefined) {
+    const numericCode =
+      typeof error.code === 'number'
+        ? error.code
+        : parseInt(String(error.code), 10);
+    if (!isNaN(numericCode) && numericCode in ERROR_MESSAGES) {
+      const message = ERROR_MESSAGES[numericCode];
+      return message || 'An unexpected error occurred. Please try again.';
+    }
   }
 
   // Default fallback
@@ -114,6 +125,9 @@ export function getErrorTitle(error: BackendError): string | undefined {
   // Group errors by type for titles
   if (error.code >= 4002 && error.code <= 4315) {
     return 'Authentication Error';
+  }
+  if (error.code === 4413) {
+    return 'Cannot Delete';
   }
   if (error.code >= 4400 && error.code <= 4412) {
     return 'Not Found';

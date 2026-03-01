@@ -1,10 +1,11 @@
 import { createSignal, createResource, Show, For } from 'solid-js';
 import { Card, CardHeader, CardBody, Input, Button } from '@/shared/ui';
-import { inviteUser } from '../api/team.api';
+import { inviteUser, checkEmailAvailability } from '../api/team.api';
 import { getRoles } from '@/shared/api/roles.api';
 import { getStorehouses } from '@/shared/api/storehouses.api';
 import { notificationStore } from '@/shared/stores/notification.store';
 import { getErrorMessage } from '@/shared/lib/error-messages';
+import { hasFeature } from '@/features/billing/store/subscription.store';
 
 interface InviteUserModalProps {
   onClose: () => void;
@@ -19,8 +20,18 @@ export default function InviteUserModal(props: InviteUserModalProps) {
     []
   );
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [emailStatus, setEmailStatus] = createSignal<
+    'idle' | 'checking' | 'available' | 'registered' | 'invited' | 'error'
+  >('idle');
 
-  const [roles] = createResource(() => getRoles());
+  const [roles] = createResource(async () => {
+    if (!hasFeature('customRoles')) return [];
+    try {
+      return await getRoles();
+    } catch {
+      return []; // Custom roles not available on current plan
+    }
+  });
   const [storehouses] = createResource(() => getStorehouses());
 
   function toggleRole(roleId: string) {
@@ -40,6 +51,59 @@ export default function InviteUserModal(props: InviteUserModalProps) {
       setSelectedStorehouses([...current, shId]);
     }
   }
+
+  const handleCheckEmail = async () => {
+    const trimmed = email().trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
+
+    setEmailStatus('checking');
+    try {
+      const result = await checkEmailAvailability(trimmed);
+      if (result.available) {
+        setEmailStatus('available');
+      } else {
+        setEmailStatus(result.reason === 'invited' ? 'invited' : 'registered');
+      }
+    } catch {
+      setEmailStatus('error');
+    }
+  };
+
+  const handleEmailInput = (
+    e: InputEvent & { currentTarget: HTMLInputElement }
+  ) => {
+    setEmail(e.currentTarget.value);
+    // Reset check status when email changes
+    if (emailStatus() !== 'idle') setEmailStatus('idle');
+  };
+
+  const emailStatusMessage = () => {
+    switch (emailStatus()) {
+      case 'available':
+        return {
+          text: 'Email is available',
+          color: 'text-status-success-text',
+        };
+      case 'registered':
+        return {
+          text: 'Already registered as a user',
+          color: 'text-accent-danger',
+        };
+      case 'invited':
+        return {
+          text: 'Already has a pending invitation',
+          color: 'text-status-warning-text',
+        };
+      case 'error':
+        return { text: 'Could not verify email', color: 'text-text-muted' };
+      default:
+        return null;
+    }
+  };
+
+  const canSubmit = () => {
+    return email().trim() && emailStatus() !== 'registered';
+  };
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -104,15 +168,81 @@ export default function InviteUserModal(props: InviteUserModalProps) {
           </CardHeader>
           <CardBody>
             <form onSubmit={handleSubmit} class="space-y-4">
-              <Input
-                type="email"
-                label="Email"
-                placeholder="colleague@example.com"
-                value={email()}
-                onInput={(e) => setEmail(e.currentTarget.value)}
-                required
-                disabled={isSubmitting()}
-              />
+              {/* Email with check button */}
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-text-primary">
+                  Email
+                </label>
+                <div class="flex gap-2">
+                  <div class="flex-1">
+                    <Input
+                      type="email"
+                      placeholder="colleague@example.com"
+                      value={email()}
+                      onInput={handleEmailInput}
+                      required
+                      disabled={isSubmitting()}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCheckEmail}
+                    disabled={
+                      isSubmitting() ||
+                      emailStatus() === 'checking' ||
+                      !email().trim()
+                    }
+                    class="hover:border-border-hover inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border-default bg-bg-surface px-3 py-2 text-xs font-medium text-text-secondary transition-colors hover:bg-bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Show
+                      when={emailStatus() !== 'checking'}
+                      fallback={
+                        <svg
+                          class="h-3.5 w-3.5 animate-spin"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                          />
+                          <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
+                        </svg>
+                      }
+                    >
+                      <svg
+                        class="h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </Show>
+                    {emailStatus() === 'checking' ? 'Checking...' : 'Check'}
+                  </button>
+                </div>
+                <Show when={emailStatusMessage()}>
+                  {(status) => (
+                    <p class={`mt-1.5 text-xs font-medium ${status().color}`}>
+                      {status().text}
+                    </p>
+                  )}
+                </Show>
+              </div>
 
               {/* Admin toggle */}
               <div>
@@ -193,9 +323,11 @@ export default function InviteUserModal(props: InviteUserModalProps) {
                               'border-accent-primary bg-accent-primary/10 text-accent-primary':
                                 isSelected(),
                               'border-border-default bg-bg-surface text-text-secondary hover:border-border-hover':
-                                !isSelected(),
+                                !isSelected() && !sh.isLocked,
+                              'border-border-default bg-bg-surface text-text-muted opacity-50 cursor-not-allowed':
+                                sh.isLocked,
                             }}
-                            disabled={isSubmitting()}
+                            disabled={isSubmitting() || sh.isLocked}
                           >
                             <div
                               class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
@@ -222,7 +354,10 @@ export default function InviteUserModal(props: InviteUserModalProps) {
                               </Show>
                             </div>
                             <div>
-                              <span class="font-medium">{sh.name}</span>
+                              <span class="font-medium">
+                                {sh.isLocked ? '🔒 ' : ''}
+                                {sh.name}
+                              </span>
                               <Show when={sh.address}>
                                 <span class="ml-1 text-text-muted">
                                   — {sh.address}
@@ -326,7 +461,7 @@ export default function InviteUserModal(props: InviteUserModalProps) {
                   type="submit"
                   variant="primary"
                   fullWidth
-                  disabled={isSubmitting()}
+                  disabled={isSubmitting() || !canSubmit()}
                 >
                   {isSubmitting() ? 'Sending...' : 'Send Invitation'}
                 </Button>

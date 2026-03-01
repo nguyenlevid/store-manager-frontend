@@ -19,6 +19,7 @@
   "dependencies": {
     "@kobalte/core": "^0.13.9",
     "@solidjs/router": "^0.15.3",
+    "@stripe/stripe-js": "^8.8.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.1.0",
     "qrcode": "^1.5.4",

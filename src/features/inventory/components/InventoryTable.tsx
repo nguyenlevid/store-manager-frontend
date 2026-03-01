@@ -145,13 +145,6 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
     return formatRelativeDate(dateString, business()?.timezone);
   };
 
-  const calculateProfit = (item: Item) => {
-    if (!item.sellingPrice) return null;
-    const profit = item.sellingPrice - item.unitPrice;
-    const margin = (profit / item.sellingPrice) * 100;
-    return { profit, margin };
-  };
-
   return (
     <>
       {/* Selection Actions Bar */}
@@ -249,12 +242,6 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
                   scope="col"
                   class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-secondary"
                 >
-                  Selling Price
-                </th>
-                <th
-                  scope="col"
-                  class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-secondary"
-                >
                   Location
                 </th>
                 <th
@@ -270,7 +257,7 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
                 when={props.items.length > 0}
                 fallback={
                   <tr>
-                    <td colspan="9" class="px-6 py-12 text-center">
+                    <td colspan="8" class="px-6 py-12 text-center">
                       <div class="flex flex-col items-center gap-2">
                         <svg
                           class="h-12 w-12 text-text-muted"
@@ -299,7 +286,6 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
                 <For each={props.items}>
                   {(item) => {
                     const status = () => getStockStatus(item);
-                    const profitData = () => calculateProfit(item);
 
                     return (
                       <tr
@@ -362,33 +348,6 @@ export const InventoryTable: Component<InventoryTableProps> = (props) => {
                         </td>
                         <td class="whitespace-nowrap px-6 py-4 text-sm font-medium text-text-primary">
                           {formatCurrency(item.unitPrice)}
-                        </td>
-                        <td class="whitespace-nowrap px-6 py-4">
-                          <Show
-                            when={item.sellingPrice}
-                            fallback={
-                              <span class="text-sm text-text-muted">—</span>
-                            }
-                          >
-                            <div class="text-sm font-medium text-text-primary">
-                              {formatCurrency(item.sellingPrice!)}
-                            </div>
-                            <Show when={profitData()}>
-                              {(data) => (
-                                <div
-                                  class={`text-xs ${
-                                    data().margin >= 30
-                                      ? 'text-accent-success'
-                                      : data().margin >= 20
-                                        ? 'text-accent-warning'
-                                        : 'text-accent-danger'
-                                  }`}
-                                >
-                                  {data().margin.toFixed(1)}% margin
-                                </div>
-                              )}
-                            </Show>
-                          </Show>
                         </td>
                         <td class="whitespace-nowrap px-6 py-4 text-sm text-text-primary">
                           <div class="flex items-center gap-1.5">

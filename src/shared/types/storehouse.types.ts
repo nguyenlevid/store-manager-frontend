@@ -9,6 +9,8 @@ export interface Storehouse {
   phoneNumber: string;
   email: string;
   business: string;
+  /** Whether this storehouse is locked (read-only) due to plan downgrade */
+  isLocked: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -16,8 +18,8 @@ export interface Storehouse {
 export interface StorehouseFormData {
   name: string;
   address: string;
-  phoneNumber: string;
-  email: string;
+  phoneNumber?: string;
+  email?: string;
 }
 
 export interface StorehouseFilters {

@@ -186,14 +186,14 @@ export default function SettingsPage() {
   };
 
   const handleAddStorehouse = async () => {
-    if (!newShName().trim()) return;
+    if (!newShName().trim() || !newShAddress().trim()) return;
     setIsAddingSh(true);
     try {
       await createStorehouse({
         name: newShName().trim(),
         address: newShAddress().trim(),
-        phoneNumber: newShPhone().trim(),
-        email: newShEmail().trim(),
+        ...(newShPhone().trim() && { phoneNumber: newShPhone().trim() }),
+        ...(newShEmail().trim() && { email: newShEmail().trim() }),
       });
       notificationStore.success('Storehouse created');
       resetAddForm();
@@ -222,9 +222,9 @@ export default function SettingsPage() {
     try {
       await updateStorehouse(sh.id, {
         name: editShName().trim(),
-        address: editShAddress().trim(),
-        phoneNumber: editShPhone().trim(),
-        email: editShEmail().trim(),
+        ...(editShAddress().trim() && { address: editShAddress().trim() }),
+        ...(editShPhone().trim() && { phoneNumber: editShPhone().trim() }),
+        ...(editShEmail().trim() && { email: editShEmail().trim() }),
       });
       notificationStore.success('Storehouse updated');
       setEditingSh(null);
@@ -474,7 +474,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <label class="mb-1 block text-xs font-medium text-text-secondary">
-                        Address
+                        Address *
                       </label>
                       <input
                         type="text"
@@ -513,7 +513,11 @@ export default function SettingsPage() {
                     <Button
                       variant="primary"
                       onClick={handleAddStorehouse}
-                      disabled={!newShName().trim() || isAddingSh()}
+                      disabled={
+                        !newShName().trim() ||
+                        !newShAddress().trim() ||
+                        isAddingSh()
+                      }
                     >
                       {isAddingSh() ? 'Creating...' : 'Create'}
                     </Button>
@@ -628,11 +632,37 @@ export default function SettingsPage() {
                           }
                         >
                           {/* Display row */}
-                          <div class="flex items-center justify-between rounded-lg border border-border-default bg-bg-surface p-4 transition-colors hover:bg-bg-hover">
+                          <div
+                            class={`flex items-center justify-between rounded-lg border p-4 transition-colors ${
+                              sh.isLocked
+                                ? 'border-border-warning/50 bg-bg-warning/5 opacity-75'
+                                : 'border-border-default bg-bg-surface hover:bg-bg-hover'
+                            }`}
+                          >
                             <div class="min-w-0 flex-1">
-                              <h3 class="text-sm font-semibold text-text-primary">
-                                {sh.name}
-                              </h3>
+                              <div class="flex items-center gap-2">
+                                <h3 class="text-sm font-semibold text-text-primary">
+                                  {sh.name}
+                                </h3>
+                                <Show when={sh.isLocked}>
+                                  <span class="bg-bg-warning/20 text-text-warning inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                                    <svg
+                                      class="h-3 w-3"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      stroke="currentColor"
+                                      stroke-width="2"
+                                    >
+                                      <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                      />
+                                    </svg>
+                                    Locked
+                                  </span>
+                                </Show>
+                              </div>
                               <div class="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-text-secondary">
                                 <Show when={sh.address}>
                                   <span>{sh.address}</span>
@@ -646,7 +676,11 @@ export default function SettingsPage() {
                               </div>
                             </div>
                             <div class="ml-3 flex gap-1.5">
-                              <Show when={can('storehouses', 'update')}>
+                              <Show
+                                when={
+                                  can('storehouses', 'update') && !sh.isLocked
+                                }
+                              >
                                 <button
                                   onClick={() => startEditingSh(sh)}
                                   class="hover:bg-bg-subtle rounded-md p-1.5 text-text-secondary hover:text-text-primary"
@@ -667,7 +701,11 @@ export default function SettingsPage() {
                                   </svg>
                                 </button>
                               </Show>
-                              <Show when={can('storehouses', 'delete')}>
+                              <Show
+                                when={
+                                  can('storehouses', 'delete') && !sh.isLocked
+                                }
+                              >
                                 <button
                                   onClick={() => setDeletingSh(sh)}
                                   class="hover:bg-status-error/10 hover:text-status-error rounded-md p-1.5 text-text-secondary"

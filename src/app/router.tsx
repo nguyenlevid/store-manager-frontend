@@ -18,6 +18,10 @@ const SuppliersPage = lazy(() => import('./pages/SuppliersPage'));
 const TransfersPage = lazy(() => import('./pages/TransfersPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const TeamManagementPage = lazy(() => import('./pages/TeamManagementPage'));
+const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage'));
+const AnalyticsPage = lazy(
+  () => import('@/features/analytics/pages/AnalyticsPage')
+);
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const OnboardingPage = lazy(
   () => import('@/features/auth/pages/OnboardingPage')
@@ -28,6 +32,7 @@ const ForgotPasswordPage = lazy(
 const ResetPasswordPage = lazy(
   () => import('@/features/auth/pages/ResetPasswordPage')
 );
+const DevPortalPage = lazy(() => import('@/features/dev/pages/DevPortalPage'));
 
 // Protected layout wrapper
 const ProtectedLayout: Component<ParentProps> = (props) => {
@@ -60,7 +65,10 @@ export function AppRouter() {
           <Route path="/suppliers" component={SuppliersPage} />
           <Route path="/settings" component={SettingsPage} />
           <Route path="/team" component={TeamManagementPage} />
+          <Route path="/billing" component={BillingPage} />
+          <Route path="/analytics" component={AnalyticsPage} />
           <Route path="/profile" component={ProfilePage} />
+          <Route path="/dev" component={DevPortalPage} />
           <Route path="*" component={NotFoundPage} />
         </Route>
       </Router>

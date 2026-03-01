@@ -20,7 +20,7 @@ interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  storehouses: Array<{ id: string; name: string }>;
+  storehouses: Array<{ id: string; name: string; isLocked?: boolean }>;
 }
 
 interface ItemFormData {
@@ -573,7 +573,11 @@ export const AddItemModal: Component<AddItemModalProps> = (props) => {
                         <option value="">Select storehouse...</option>
                         <For each={props.storehouses}>
                           {(warehouse) => (
-                            <option value={warehouse.id}>
+                            <option
+                              value={warehouse.id}
+                              disabled={warehouse.isLocked}
+                            >
+                              {warehouse.isLocked ? '🔒 ' : ''}
                               {warehouse.name}
                             </option>
                           )}

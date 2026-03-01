@@ -180,7 +180,12 @@ export const TransferStockModal: Component<TransferStockModalProps> = (
                 >
                   <option value="">Select storehouse...</option>
                   <For each={destinations()}>
-                    {(sh) => <option value={sh.id}>{sh.name}</option>}
+                    {(sh) => (
+                      <option value={sh.id} disabled={sh.isLocked}>
+                        {sh.isLocked ? '🔒 ' : ''}
+                        {sh.name}
+                      </option>
+                    )}
                   </For>
                 </select>
               </Show>

@@ -13,6 +13,11 @@ import { createSignal, createResource, Show, For, createMemo } from 'solid-js';
 import { Card, CardBody, CardHeader, Button, Input } from '@/shared/ui';
 import RoleManager from '@/shared/components/RoleManager';
 import { isAdmin } from '@/shared/stores/permissions.store';
+import { FeatureGate } from '@/features/billing/components/UpgradePrompt';
+import {
+  hasFeature,
+  isWithinLimit,
+} from '@/features/billing/store/subscription.store';
 import { getBusiness } from '@/shared/stores/business.store';
 import { getUser } from '@/features/auth/store/session.store';
 import { notificationStore } from '@/shared/stores/notification.store';
@@ -67,6 +72,7 @@ export default function TeamManagementPage() {
         <TabButton
           active={activeTab() === 'roles'}
           onClick={() => setActiveTab('roles')}
+          locked={!hasFeature('customRoles')}
           icon={
             <path
               stroke-linecap="round"
@@ -80,6 +86,7 @@ export default function TeamManagementPage() {
         <TabButton
           active={activeTab() === 'access'}
           onClick={() => setActiveTab('access')}
+          locked={!hasFeature('customRoles')}
           icon={
             <path
               stroke-linecap="round"
@@ -98,11 +105,21 @@ export default function TeamManagementPage() {
       </Show>
 
       <Show when={activeTab() === 'roles'}>
-        <RoleManager />
+        <FeatureGate
+          feature="customRoles"
+          message="Custom roles require a Pro or Enterprise plan. Upgrade to create custom permission sets for your team."
+        >
+          <RoleManager />
+        </FeatureGate>
       </Show>
 
       <Show when={activeTab() === 'access'}>
-        <AccessPanel />
+        <FeatureGate
+          feature="customRoles"
+          message="Role & storehouse access assignments require a Pro or Enterprise plan."
+        >
+          <AccessPanel />
+        </FeatureGate>
       </Show>
     </div>
   );
@@ -117,14 +134,16 @@ function TabButton(props: {
   onClick: () => void;
   icon: any;
   label: string;
+  locked?: boolean;
 }) {
   return (
     <button
       class="flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors"
       classList={{
-        'bg-accent-primary text-text-inverse': props.active,
+        'bg-accent-primary text-text-inverse': props.active && !props.locked,
         'text-text-secondary hover:text-text-primary hover:bg-bg-hover':
-          !props.active,
+          !props.active && !props.locked,
+        'text-text-muted cursor-default opacity-60': props.locked,
       }}
       onClick={props.onClick}
     >
@@ -138,6 +157,21 @@ function TabButton(props: {
           {props.icon}
         </svg>
         {props.label}
+        <Show when={props.locked}>
+          <svg
+            class="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+        </Show>
       </div>
     </button>
   );
@@ -205,7 +239,13 @@ function MembersPanel() {
   const [invitedUsers, { refetch: refetchInvited }] = createResource(() =>
     isAdmin() ? getInvitedUsers() : Promise.resolve([])
   );
-  const [roles] = createResource(() => getRoles());
+  const [roles] = createResource(async () => {
+    try {
+      return await getRoles();
+    } catch {
+      return []; // Custom roles not available on current plan
+    }
+  });
   const [showInviteModal, setShowInviteModal] = createSignal(false);
 
   // Search and filter state
@@ -376,7 +416,7 @@ function MembersPanel() {
                 Manage your team members and their account status
               </p>
             </div>
-            <Show when={isCurrentUserAdmin()}>
+            <Show when={isCurrentUserAdmin() && isWithinLimit('users')}>
               <Button
                 variant="primary"
                 onClick={() => setShowInviteModal(true)}
@@ -691,7 +731,13 @@ function AccessPanel() {
   const [users, { refetch: refetchUsers }] = createResource(() =>
     getBusinessUsers()
   );
-  const [roles] = createResource(() => getRoles());
+  const [roles] = createResource(async () => {
+    try {
+      return await getRoles();
+    } catch {
+      return []; // Custom roles not available on current plan
+    }
+  });
   const [storehouses] = createResource(() => getStorehouses());
 
   // Search

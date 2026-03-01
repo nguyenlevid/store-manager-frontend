@@ -21,6 +21,7 @@ interface BackendStorehouse {
   phoneNumber: string;
   email: string;
   business: string;
+  isLocked?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -47,6 +48,7 @@ function mapBackendStorehouse(storehouse: BackendStorehouse): Storehouse {
     phoneNumber: storehouse.phoneNumber,
     email: storehouse.email,
     business: storehouse.business,
+    isLocked: storehouse.isLocked ?? false,
     createdAt: storehouse.createdAt || new Date().toISOString(),
     updatedAt: storehouse.updatedAt || new Date().toISOString(),
   };

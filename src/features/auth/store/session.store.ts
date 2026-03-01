@@ -4,6 +4,8 @@ import {
   fetchPermissions,
   clearPermissions,
 } from '@/shared/stores/permissions.store';
+import { clearSubscription } from '@/features/billing/store/subscription.store';
+import { clearDevContext } from '@/features/dev/pages/DevPortalPage';
 import type { User, SessionStatus } from '../types/auth.types';
 import type {
   SignupRequest,
@@ -110,6 +112,8 @@ export async function logoutUser(): Promise<void> {
     setStatus('unauthenticated');
     setError(null);
     clearPermissions();
+    clearSubscription();
+    clearDevContext();
   }
 }
 
@@ -146,6 +150,13 @@ export function getError(): AppError | null {
  */
 export function getStatus(): SessionStatus {
   return status();
+}
+
+/**
+ * Check if current user has the dev role
+ */
+export function isDev(): boolean {
+  return getUser()?.appRole === 'dev';
 }
 
 /**

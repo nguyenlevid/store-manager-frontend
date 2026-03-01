@@ -110,8 +110,10 @@ async function handleUnauthorized(): Promise<void> {
  */
 async function request<T>(
   endpoint: string,
-  config: RequestConfig = {}
+  config: RequestConfig = {},
+  _retryCount: number = 0
 ): Promise<T> {
+  const MAX_AUTH_RETRIES = 1;
   const {
     method = 'GET',
     body,
@@ -186,12 +188,25 @@ async function request<T>(
         endpoint === '/auth/logout-all';
 
       if (!isAuthMutationEndpoint) {
-        try {
-          await handleUnauthorized();
-          // Retry the original request
-          return request<T>(endpoint, config);
-        } catch {
-          // Refresh failed - return 401 error
+        if (_retryCount < MAX_AUTH_RETRIES) {
+          try {
+            await handleUnauthorized();
+            // Retry the original request with incremented counter
+            return request<T>(endpoint, config, _retryCount + 1);
+          } catch {
+            // Refresh failed - return 401 error
+            const errorData = (await safeParseJson(response)) as Record<
+              string,
+              unknown
+            > | null;
+            throw {
+              message: (errorData?.['message'] as string) || 'Unauthorized',
+              code: ERROR_CODES.UNAUTHORIZED,
+              status: 401,
+            } as AppError;
+          }
+        } else {
+          // Max retries exceeded - return 401 error
           const errorData = (await safeParseJson(response)) as Record<
             string,
             unknown

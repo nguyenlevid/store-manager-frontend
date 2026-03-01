@@ -9,6 +9,8 @@ export { Button } from './Button';
 export { Input } from './Input';
 export { Card, CardHeader, CardBody, CardFooter } from './Card';
 export { Alert } from './Alert';
+export { ConfirmDialog } from './ConfirmDialog';
+export type { ConfirmDialogProps } from './ConfirmDialog';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
 export { CopyableId } from './CopyableId';

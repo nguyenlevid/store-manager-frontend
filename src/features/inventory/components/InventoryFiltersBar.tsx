@@ -149,7 +149,12 @@ export const InventoryFiltersBar: Component<InventoryFiltersBarProps> = (
             >
               <option value="all">All Locations</option>
               <For each={props.storehouses}>
-                {(store) => <option value={store.id}>{store.name}</option>}
+                {(store) => (
+                  <option value={store.id}>
+                    {store.isLocked ? '🔒 ' : ''}
+                    {store.name}
+                  </option>
+                )}
               </For>
             </select>
           </Show>

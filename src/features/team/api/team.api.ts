@@ -28,6 +28,19 @@ export async function getInvitedUsers(): Promise<InvitedUser[]> {
 }
 
 /**
+ * Check if an email is available for invitation
+ */
+export async function checkEmailAvailability(
+  email: string
+): Promise<{ available: boolean; reason?: 'registered' | 'invited' }> {
+  const response = await apiClient.get<{
+    available: boolean;
+    reason?: 'registered' | 'invited';
+  }>(`/user/check-email?email=${encodeURIComponent(email)}`);
+  return response;
+}
+
+/**
  * Invite a new user to the business
  */
 export async function inviteUser(

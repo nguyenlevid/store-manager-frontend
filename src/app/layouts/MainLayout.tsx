@@ -1,13 +1,59 @@
 import type { JSX } from 'solid-js';
-import { A } from '@solidjs/router';
-import { createSignal, onCleanup, Show } from 'solid-js';
+import { A, useNavigate } from '@solidjs/router';
+import { createSignal, createResource, onCleanup, Show, For } from 'solid-js';
 import { getUser, logoutUser } from '@/features/auth/store/session.store';
 import { toggleTheme, getCurrentTheme, type ThemeName } from '@/theme';
 import { FloatingActionButton } from '@/shared/ui';
+import { DowngradeBanner } from '@/features/billing/components/DowngradeBanner';
+import { ComplianceGate } from '@/features/billing/components/ComplianceGate';
+import {
+  fetchPendingDowngrade,
+  fetchSubscription,
+  subscriptionStore,
+  hasFeature,
+} from '@/features/billing/store/subscription.store';
+import type { FeatureFlag } from '@/features/billing/types/billing.types';
+import { getStorehouses } from '@/shared/api/storehouses.api';
+import { isAdmin } from '@/shared/stores/permissions.store';
+import { isDev } from '@/features/auth/store/session.store';
 
 interface MainLayoutProps {
   children: JSX.Element;
 }
+
+// ============================================
+// Nav item definitions — features that require a paid plan
+// get a lock icon + badge when the feature is unavailable.
+// ============================================
+
+interface NavItem {
+  label: string;
+  href: string;
+  /** If set, the link is gated behind this feature flag. */
+  feature?: FeatureFlag;
+  /** Badge text shown when the feature is locked (e.g. "Pro"). */
+  requiredPlanLabel?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Inventory', href: '/inventory' },
+  { label: 'Orders', href: '/orders' },
+  { label: 'Imports', href: '/imports' },
+  {
+    label: 'Transfers',
+    href: '/transfers',
+    feature: 'transfers',
+    requiredPlanLabel: 'Pro',
+  },
+  { label: 'Clients', href: '/clients' },
+  { label: 'Suppliers', href: '/suppliers' },
+  {
+    label: 'Analytics',
+    href: '/analytics',
+    feature: 'advancedReports',
+    requiredPlanLabel: 'Enterprise',
+  },
+];
 
 export function MainLayout(props: MainLayoutProps) {
   const user = getUser();
@@ -42,6 +88,19 @@ export function MainLayout(props: MainLayoutProps) {
   document.addEventListener('click', handleClickOutside);
   onCleanup(() => document.removeEventListener('click', handleClickOutside));
 
+  const navigate = useNavigate();
+
+  // Fetch subscription data eagerly so ComplianceGate can check limits on any route
+  fetchSubscription();
+
+  // Fetch pending downgrade data for banner
+  fetchPendingDowngrade();
+
+  // Fetch storehouses to count locked ones
+  const [storehouses] = createResource(() => getStorehouses());
+  const lockedStorehouseCount = () =>
+    (storehouses() ?? []).filter((s) => s.isLocked).length;
+
   return (
     <div class="min-h-screen bg-bg-app">
       {/* Header */}
@@ -58,48 +117,52 @@ export function MainLayout(props: MainLayoutProps) {
               </A>
               {/* Desktop Navigation */}
               <div class="hidden gap-1 md:flex">
-                <A
-                  href="/inventory"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                >
-                  Inventory
-                </A>
-                <A
-                  href="/orders"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                >
-                  Orders
-                </A>
-                <A
-                  href="/imports"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                >
-                  Imports
-                </A>
-                <A
-                  href="/transfers"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                >
-                  Transfers
-                </A>
-                <A
-                  href="/clients"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                >
-                  Clients
-                </A>
-                <A
-                  href="/suppliers"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                >
-                  Suppliers
-                </A>
+                <For each={NAV_ITEMS}>
+                  {(item) => {
+                    const locked = () =>
+                      item.feature ? !hasFeature(item.feature) : false;
+                    return (
+                      <A
+                        href={locked() ? '/billing' : item.href}
+                        class={`relative rounded-md px-3 py-2 text-sm font-medium ${
+                          locked()
+                            ? 'text-text-tertiary hover:bg-bg-hover hover:text-text-secondary'
+                            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                        }`}
+                        activeClass={
+                          locked()
+                            ? ''
+                            : 'bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle'
+                        }
+                        title={
+                          locked()
+                            ? `Requires ${item.requiredPlanLabel} plan`
+                            : undefined
+                        }
+                      >
+                        <span class="flex items-center gap-1.5">
+                          {item.label}
+                          <Show when={locked()}>
+                            {/* Lock icon */}
+                            <svg
+                              class="text-text-tertiary h-3.5 w-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                              />
+                            </svg>
+                          </Show>
+                        </span>
+                      </A>
+                    );
+                  }}
+                </For>
               </div>
             </div>
             <div class="flex items-center gap-3">
@@ -284,6 +347,54 @@ export function MainLayout(props: MainLayoutProps) {
                           Team Management
                         </div>
                       </A>
+                      <Show when={isAdmin()}>
+                        <A
+                          href="/billing"
+                          class="block px-4 py-2 text-sm text-text-primary hover:bg-bg-hover"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <div class="flex items-center gap-2">
+                            <svg
+                              class="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                              />
+                            </svg>
+                            Billing
+                          </div>
+                        </A>
+                      </Show>
+                      <Show when={isDev()}>
+                        <A
+                          href="/dev"
+                          class="block px-4 py-2 text-sm text-text-primary hover:bg-bg-hover"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <div class="flex items-center gap-2">
+                            <svg
+                              class="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                              />
+                            </svg>
+                            Dev Portal
+                          </div>
+                        </A>
+                      </Show>
                       <div class="my-1 border-t border-border-subtle"></div>
                       <button
                         onClick={handleLogout}
@@ -317,63 +428,69 @@ export function MainLayout(props: MainLayoutProps) {
           <Show when={isMobileMenuOpen()}>
             <div class="border-t border-border-subtle bg-bg-surface py-3 md:hidden">
               <div class="flex flex-col gap-1">
-                <A
-                  href="/inventory"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Inventory
-                </A>
-                <A
-                  href="/orders"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Orders
-                </A>
-                <A
-                  href="/imports"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Imports
-                </A>
-                <A
-                  href="/transfers"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Transfers
-                </A>
-                <A
-                  href="/clients"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Clients
-                </A>
-                <A
-                  href="/suppliers"
-                  class="rounded-md px-3 py-2 text-sm font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary"
-                  activeClass="bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Suppliers
-                </A>
+                <For each={NAV_ITEMS}>
+                  {(item) => {
+                    const locked = () =>
+                      item.feature ? !hasFeature(item.feature) : false;
+                    return (
+                      <A
+                        href={locked() ? '/billing' : item.href}
+                        class={`rounded-md px-3 py-2 text-sm font-medium ${
+                          locked()
+                            ? 'text-text-tertiary hover:bg-bg-hover hover:text-text-secondary'
+                            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                        }`}
+                        activeClass={
+                          locked()
+                            ? ''
+                            : 'bg-accent-primary-subtle text-accent-primary hover:bg-accent-primary-subtle'
+                        }
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        title={
+                          locked()
+                            ? `Requires ${item.requiredPlanLabel} plan`
+                            : undefined
+                        }
+                      >
+                        <span class="flex items-center gap-1.5">
+                          {item.label}
+                          <Show when={locked()}>
+                            <svg
+                              class="text-text-tertiary h-3.5 w-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                              />
+                            </svg>
+                          </Show>
+                        </span>
+                      </A>
+                    );
+                  }}
+                </For>
               </div>
             </div>
           </Show>
         </nav>
       </header>
 
+      {/* Downgrade banner */}
+      <DowngradeBanner
+        pendingDowngrade={subscriptionStore.pendingDowngrade()}
+        lockedStorehouseCount={lockedStorehouseCount()}
+        isAdmin={isAdmin()}
+        onNavigateToBilling={() => navigate('/billing')}
+      />
+
       {/* Main content */}
       <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {props.children}
+        <ComplianceGate>{props.children}</ComplianceGate>
       </main>
 
       {/* Global Floating Action Button */}

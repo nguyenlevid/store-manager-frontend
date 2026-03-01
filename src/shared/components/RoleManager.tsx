@@ -91,7 +91,13 @@ function clonePermissions(p: Permissions): Permissions {
 }
 
 export default function RoleManager() {
-  const [roles, { refetch }] = createResource(() => getRoles());
+  const [roles, { refetch }] = createResource(async () => {
+    try {
+      return await getRoles();
+    } catch {
+      return []; // Custom roles not available on current plan
+    }
+  });
 
   // ── Create / Edit state ──
   const [mode, setMode] = createSignal<'list' | 'create' | 'edit'>('list');
