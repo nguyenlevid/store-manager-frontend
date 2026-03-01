@@ -122,6 +122,11 @@ export function getErrorMessage(error: BackendError | string): string {
 export function getErrorTitle(error: BackendError): string | undefined {
   if (!error.code || typeof error.code !== 'number') return undefined;
 
+  // Subscription / plan errors (must come before auth range check)
+  if (error.code >= 4020 && error.code <= 4025) {
+    return 'Plan Limit Reached';
+  }
+
   // Group errors by type for titles
   if (error.code >= 4002 && error.code <= 4315) {
     return 'Authentication Error';

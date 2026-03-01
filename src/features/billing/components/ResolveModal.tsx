@@ -168,8 +168,7 @@ export const ResolveModal: Component<ResolveModalProps> = (props) => {
                     </div>
                     <p class="mb-3 text-xs text-text-secondary">
                       Unlocked storehouses will become fully operational again.
-                      The backend will reject if unlocking exceeds your plan's
-                      storehouse limit.
+                      You can only unlock up to your plan's storehouse limit.
                     </p>
                     <div class="space-y-2">
                       <For each={candidates()!.lockedStorehouses}>
@@ -218,9 +217,8 @@ export const ResolveModal: Component<ResolveModalProps> = (props) => {
                       </span>
                     </div>
                     <p class="mb-3 text-xs text-text-secondary">
-                      Reactivated users will be able to sign in again. The
-                      backend will reject if reactivating exceeds your plan's
-                      user limit.
+                      Reactivated users will be able to sign in again. You can
+                      only reactivate up to your plan's user limit.
                     </p>
                     <div class="space-y-2">
                       <For each={candidates()!.inactiveUsers}>

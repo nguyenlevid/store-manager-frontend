@@ -15,6 +15,8 @@ import type {
   ClearLimitOverrideRequest,
   ClearFeatureOverrideRequest,
   ClearAllOverridesRequest,
+  BusinessActivity,
+  SendReminderResponse,
 } from '../types/dev.types';
 import type { UsageSummary } from '@/features/billing/types/billing.types';
 
@@ -97,4 +99,20 @@ export async function clearAllOverrides(
   req: ClearAllOverridesRequest
 ): Promise<UsageSummary> {
   return apiClient.post<UsageSummary>('/subscription/override/clear-all', req);
+}
+
+// ─── Activity ───────────────────────────────────────────────
+
+/** Fetch business activity overview (dev only) */
+export async function getBusinessActivity(): Promise<BusinessActivity[]> {
+  return apiClient.get<BusinessActivity[]>('/business/activity');
+}
+
+/** Send a reminder email to a business owner (dev only) */
+export async function sendReminderEmail(
+  businessId: string
+): Promise<SendReminderResponse> {
+  return apiClient.post<SendReminderResponse>('/business/send-reminder', {
+    businessId,
+  });
 }

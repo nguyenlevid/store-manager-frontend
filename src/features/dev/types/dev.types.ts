@@ -47,4 +47,25 @@ export interface ClearAllOverridesRequest {
   businessId: string;
 }
 
+export interface BusinessActivity {
+  businessId: string;
+  businessName: string;
+  ownerEmail: string;
+  plan: string;
+  status: string;
+  lastTransactionAt: string | null;
+  lastImportAt: string | null;
+  lastLoginAt: string | null;
+  lastActivityAt: string | null;
+  transactionCount30d: number;
+  importCount30d: number;
+  daysSinceLastActivity: number; // -1 = never active
+  createdAt: string;
+}
+
+export interface SendReminderResponse {
+  message: string;
+  to: string;
+}
+
 export type { UsageSummary, LimitDimension, FeatureFlag };

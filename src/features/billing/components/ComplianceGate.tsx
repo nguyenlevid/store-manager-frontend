@@ -21,7 +21,7 @@ import {
   type Component,
   type JSX,
 } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { useNavigate, useLocation } from '@solidjs/router';
 import { Button } from '@/shared/ui/Button';
 import { getDowngradeRequirements } from '../api/billing.api';
 import {
@@ -53,6 +53,10 @@ const ACTIONABLE_DIMENSIONS: LimitDimension[] = ['storehouses', 'users'];
 
 export const ComplianceGate: Component<ComplianceGateProps> = (props) => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Allow /billing through even when over-limit so admin can upgrade
+  const isBillingRoute = () => location.pathname.startsWith('/billing');
 
   // ── Loading gate — wait until subscription fetch has been attempted ──
   // MainLayout calls fetchSubscription() on mount, so the data will arrive.
@@ -209,7 +213,7 @@ export const ComplianceGate: Component<ComplianceGateProps> = (props) => {
         </div>
       }
     >
-      <Show when={isOverLimit()} fallback={props.children}>
+      <Show when={isOverLimit() && !isBillingRoute()} fallback={props.children}>
         <div class="flex min-h-[60vh] items-center justify-center px-4 py-12">
           <div class="w-full max-w-xl rounded-xl border border-border-default bg-bg-surface shadow-lg">
             {/* Header */}

@@ -1386,12 +1386,6 @@ function PlanCard(props: {
                   </li>
                 )}
               </For>
-              <li class="flex justify-between">
-                <span class="text-text-secondary">API Rate Limit</span>
-                <span class="font-medium text-text-primary">
-                  {props.plan.limits.apiRequestsPerMinute} req/min
-                </span>
-              </li>
             </ul>
           </div>
 

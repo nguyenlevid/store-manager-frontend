@@ -22,6 +22,7 @@ import { Card, CardBody, CardHeader, Button, Input } from '@/shared/ui';
 import { isDev } from '@/features/auth/store/session.store';
 import * as devApi from '../api/dev.api';
 import type { BusinessSummary } from '../types/dev.types';
+import type { BusinessActivity } from '../types/dev.types';
 import type {
   UsageSummary,
   LimitDimension,
@@ -30,7 +31,7 @@ import type {
 import { getErrorMessage } from '@/shared/lib/error-messages';
 import { normalizeError } from '@/shared/lib/errors';
 
-type Tab = 'businesses' | 'subscription' | 'overrides';
+type Tab = 'businesses' | 'subscription' | 'overrides' | 'activity';
 
 const DEV_CONTEXT_KEY = 'dev:selectedBusiness';
 
@@ -205,6 +206,19 @@ export default function DevPortalPage() {
             }
             label="Overrides"
           />
+          <TabButton
+            active={activeTab() === 'activity'}
+            onClick={() => setActiveTab('activity')}
+            icon={
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+              />
+            }
+            label="Activity"
+          />
         </div>
 
         {/* Selected business context banner */}
@@ -273,6 +287,10 @@ export default function DevPortalPage() {
             subscription={subscription()}
             onOverrideApplied={(usage) => setSubscription(usage)}
           />
+        </Show>
+
+        <Show when={activeTab() === 'activity'}>
+          <ActivityPanel />
         </Show>
       </div>
     </Show>
@@ -1186,6 +1204,322 @@ function UsageBar(props: { label: string; value: string; percent: number }) {
           style={{ width: `${props.percent}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tab 4: Activity
+// ─────────────────────────────────────────────────────────────
+
+function ActivityPanel() {
+  const [activities, setActivities] = createSignal<BusinessActivity[]>([]);
+  const [loading, setLoading] = createSignal(true);
+  const [error, setError] = createSignal<string | null>(null);
+  const [sending, setSending] = createSignal<string | null>(null); // businessId being sent
+  const [message, setMessage] = createSignal<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+
+  // Load activity data on mount
+  onMount(async () => {
+    await fetchActivity();
+  });
+
+  async function fetchActivity() {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await devApi.getBusinessActivity();
+      setActivities(data);
+    } catch (err) {
+      setError(getErrorMessage(normalizeError(err)));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSendReminder(businessId: string, businessName: string) {
+    if (!confirm(`Send a reminder email to the owner of "${businessName}"?`))
+      return;
+
+    setSending(businessId);
+    setMessage(null);
+    try {
+      const result = await devApi.sendReminderEmail(businessId);
+      setMessage({
+        type: 'success',
+        text: `Reminder sent to ${result.to} (${businessName})`,
+      });
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: getErrorMessage(normalizeError(err)),
+      });
+    } finally {
+      setSending(null);
+    }
+  }
+
+  function activityColor(days: number): string {
+    if (days === -1) return 'bg-bg-muted'; // never active — grey
+    if (days >= 90) return 'bg-accent-danger/15';
+    if (days >= 60) return 'bg-accent-danger/8';
+    if (days >= 30) return 'bg-status-warning-text/10';
+    return ''; // recent — no highlight
+  }
+
+  function activityBadge(days: number): { label: string; class: string } {
+    if (days === -1)
+      return {
+        label: 'Never',
+        class: 'bg-bg-muted text-text-tertiary',
+      };
+    if (days >= 90)
+      return {
+        label: `${days}d`,
+        class: 'bg-accent-danger/15 text-accent-danger',
+      };
+    if (days >= 60)
+      return {
+        label: `${days}d`,
+        class: 'bg-accent-danger/10 text-accent-danger',
+      };
+    if (days >= 30)
+      return {
+        label: `${days}d`,
+        class: 'bg-status-warning-text/15 text-status-warning-text',
+      };
+    return {
+      label: `${days}d`,
+      class: 'bg-accent-success/15 text-accent-success',
+    };
+  }
+
+  function formatDate(dateStr: string | null): string {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString();
+  }
+
+  return (
+    <div class="space-y-4">
+      {/* Status message */}
+      <Show when={message()}>
+        {(msg) => (
+          <div
+            class="rounded-md border px-4 py-3 text-sm"
+            classList={{
+              'border-accent-success/30 bg-accent-success/10 text-accent-success':
+                msg().type === 'success',
+              'border-accent-danger/30 bg-accent-danger/10 text-accent-danger':
+                msg().type === 'error',
+            }}
+          >
+            {msg().text}
+          </div>
+        )}
+      </Show>
+
+      <Card>
+        <CardHeader>
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-text-primary">
+                Business Activity
+              </h2>
+              <p class="mt-1 text-xs text-text-secondary">
+                Sorted by least active. Tracks last transaction, import, and
+                login.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={fetchActivity}
+              disabled={loading()}
+            >
+              {loading() ? 'Loading...' : 'Refresh'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <Show when={error()}>
+            <div class="border-accent-danger/30 bg-accent-danger/10 mb-4 rounded-md border px-4 py-3 text-sm text-accent-danger">
+              {error()}
+            </div>
+          </Show>
+
+          <Show
+            when={!loading()}
+            fallback={
+              <div class="py-8 text-center text-text-secondary">
+                Loading activity data...
+              </div>
+            }
+          >
+            <Show
+              when={activities().length > 0}
+              fallback={
+                <div class="py-8 text-center text-text-secondary">
+                  No businesses found
+                </div>
+              }
+            >
+              {/* Summary stats */}
+              <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div class="rounded-md border border-border-subtle p-3">
+                  <p class="text-text-tertiary text-xs">Total</p>
+                  <p class="text-xl font-semibold text-text-primary">
+                    {activities().length}
+                  </p>
+                </div>
+                <div class="border-accent-success/30 rounded-md border p-3">
+                  <p class="text-xs text-accent-success">Active (&lt;30d)</p>
+                  <p class="text-xl font-semibold text-accent-success">
+                    {
+                      activities().filter(
+                        (a) =>
+                          a.daysSinceLastActivity >= 0 &&
+                          a.daysSinceLastActivity < 30
+                      ).length
+                    }
+                  </p>
+                </div>
+                <div class="border-status-warning-text/30 rounded-md border p-3">
+                  <p class="text-xs text-status-warning-text">
+                    Inactive (30-89d)
+                  </p>
+                  <p class="text-xl font-semibold text-status-warning-text">
+                    {
+                      activities().filter(
+                        (a) =>
+                          a.daysSinceLastActivity >= 30 &&
+                          a.daysSinceLastActivity < 90
+                      ).length
+                    }
+                  </p>
+                </div>
+                <div class="border-accent-danger/30 rounded-md border p-3">
+                  <p class="text-xs text-accent-danger">
+                    Dormant (90d+ / Never)
+                  </p>
+                  <p class="text-xl font-semibold text-accent-danger">
+                    {
+                      activities().filter(
+                        (a) =>
+                          a.daysSinceLastActivity === -1 ||
+                          a.daysSinceLastActivity >= 90
+                      ).length
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Activity table */}
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                  <thead>
+                    <tr class="border-b border-border-subtle">
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        Business
+                      </th>
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        Plan
+                      </th>
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        Inactive
+                      </th>
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        Last Login
+                      </th>
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        Last Tx
+                      </th>
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        Last Import
+                      </th>
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        30d Txns
+                      </th>
+                      <th class="pb-3 pr-3 font-medium text-text-secondary">
+                        30d Imports
+                      </th>
+                      <th class="pb-3 font-medium text-text-secondary">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={activities()}>
+                      {(act) => {
+                        const badge = activityBadge(act.daysSinceLastActivity);
+                        return (
+                          <tr
+                            class={`border-b border-border-subtle transition-colors hover:bg-bg-hover ${activityColor(act.daysSinceLastActivity)}`}
+                          >
+                            <td class="py-3 pr-3">
+                              <div class="font-medium text-text-primary">
+                                {act.businessName}
+                              </div>
+                              <div class="text-text-tertiary text-xs">
+                                {act.ownerEmail}
+                              </div>
+                            </td>
+                            <td class="py-3 pr-3">
+                              <span class="rounded-full border border-border-subtle px-2 py-0.5 text-xs text-text-secondary">
+                                {act.plan}
+                              </span>
+                            </td>
+                            <td class="py-3 pr-3">
+                              <span
+                                class={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${badge.class}`}
+                              >
+                                {badge.label}
+                              </span>
+                            </td>
+                            <td class="py-3 pr-3 text-text-secondary">
+                              {formatDate(act.lastLoginAt)}
+                            </td>
+                            <td class="py-3 pr-3 text-text-secondary">
+                              {formatDate(act.lastTransactionAt)}
+                            </td>
+                            <td class="py-3 pr-3 text-text-secondary">
+                              {formatDate(act.lastImportAt)}
+                            </td>
+                            <td class="py-3 pr-3 text-center text-text-secondary">
+                              {act.transactionCount30d}
+                            </td>
+                            <td class="py-3 pr-3 text-center text-text-secondary">
+                              {act.importCount30d}
+                            </td>
+                            <td class="py-3">
+                              <button
+                                class="border-accent-primary/30 hover:bg-accent-primary/10 rounded-md border px-3 py-1 text-xs font-medium text-accent-primary transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={() =>
+                                  handleSendReminder(
+                                    act.businessId,
+                                    act.businessName
+                                  )
+                                }
+                                disabled={sending() === act.businessId}
+                              >
+                                {sending() === act.businessId
+                                  ? 'Sending...'
+                                  : 'Remind'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
+          </Show>
+        </CardBody>
+      </Card>
     </div>
   );
 }
